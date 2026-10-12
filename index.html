@@ -1,0 +1,1877 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Hi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@300&family=Gaegu&family=Shadows+Into+Light&display=swap" rel="stylesheet" />
+<style>
+  /* HanziPen SC (comes with macOS) for the contents; Kalam / Gaegu (Korean) elsewhere */
+  @font-face { font-family: 'HanziPenThin'; src: local('HanziPenSC-W3'), local('HanziPen SC Regular'), local('HanziPen SC'); }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: #fff; overflow: hidden; color: #111; }
+  body { font-family: 'HanziPenThin', 'Kalam', 'Gaegu', cursive; user-select: none; -webkit-user-select: none; }
+
+  /* ---------- under the drawing ---------- */
+  .under { position: fixed; inset: 0; }
+  .pen path, .pen circle {
+    fill: none; stroke: #111; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    vector-effect: non-scaling-stroke; /* same 2px line as the play button */
+  }
+  /* "About me" written with the pen; click it to meet me */
+
+  /* the person + age slider */
+  .life {
+    position: absolute; left: 6vw; top: 50%; transform: translateY(-50%);
+    display: flex; align-items: flex-end; gap: clamp(10px, 1.6vw, 24px);
+    opacity: 0; pointer-events: none; transition: opacity .6s .35s;
+  }
+  body.met .life { opacity: 1; pointer-events: auto; }
+  .person { height: min(62vh, 520px); aspect-ratio: 200 / 300; filter: url(#boil-sm); cursor: default; }
+  .person svg, .slider svg { width: 100%; height: 100%; display: block; overflow: visible; }
+  .slider { height: min(62vh, 520px); width: 44px; filter: url(#boil-sm); touch-action: none; cursor: grab; outline: none; }
+  .slider:active { cursor: grabbing; }
+
+  /* ---------- things along the bar (0–100) ---------- */
+  .moment {
+    position: absolute; right: 10vw; top: 50%; transform: translateY(-46%);
+    opacity: 0; pointer-events: none; transition: opacity .5s, transform .5s;
+  }
+  body.met .moment.on { opacity: 1; pointer-events: auto; transform: translateY(-50%); }
+
+  /* a pile of photos you can mess around with — each has a hand-drawn outline */
+  .pile { position: absolute; left: 44vw; right: 3vw; top: 6vh; bottom: 12vh; transform: none; }
+  body.met .pile.on { transform: none; }
+  .photo {
+    position: absolute; left: 0; top: 0; padding: 9px; background: #fff;
+    cursor: grab; touch-action: none; user-select: none; contain: layout; opacity: 0; transition: opacity .3s;
+  }
+  .photo:active { cursor: grabbing; }
+  .photo.ready { opacity: 1; }
+  .photo canvas { display: block; width: 100%; height: auto; pointer-events: none; }
+  .photo svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+  .photo svg path { fill: none; stroke: #111; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+
+  /* record player + CDs (bar 25) */
+  .records { position: absolute; left: 44vw; right: 1.5vw; top: 3vh; bottom: 9vh; transform: none; }
+  body.met .records.on { transform: none; }
+  /* one fixed-ratio stage (760 × 440) holding the player and the CDs, scaled to fit as a whole */
+  .records .stage { position: absolute; left: 0; top: 0; width: 790px; height: 440px; transform-origin: 0 0; --sw: 2px; }
+  .player { position: absolute; left: 0; top: 0; width: 540px; height: 437px; overflow: visible; }
+  /* the stage is scaled as a whole; the line width is set in drawing units to come out at 2px on screen,
+     like the person (--sw = 2 / stage scale; CDs also undo their own growth and their 120→110 viewBox) */
+  .player path { fill: none; stroke: #111; stroke-width: calc(var(--sw) / 1.2857); stroke-linecap: round; stroke-linejoin: round; } /* 540/420 */
+  .cd path { fill: none; stroke: #111; stroke-width: calc(var(--sw) * 1.0909 / var(--s, 1)); stroke-linecap: round; stroke-linejoin: round; }
+  .player .paper { fill: #fff; }
+  .player .arm { transform-box: view-box; transform-origin: 352px 64px; transition: transform .9s cubic-bezier(.5,0,.2,1); }
+  .records.spinning .player .arm { transform: rotate(24deg); }
+  .cd {
+    position: absolute; left: 0; top: 0; width: 110px; touch-action: none; user-select: none; cursor: grab;
+    transition: opacity .3s; contain: layout;
+  }
+  .cd:active { cursor: grabbing; }
+  .cd.snapping { transition: transform .45s cubic-bezier(.3,1.3,.5,1); }
+  .cd .disc { position: relative; width: 110px; height: 110px; }
+  .cd .disc canvas, .cd .disc svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .cd.playing .disc { animation: spin 2.2s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .cd .name {
+    margin-top: 6px; text-align: center; font-family: 'Shadows Into Light', cursive; font-size: 15px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: opacity .3s;
+  }
+  .cd.docked .name { opacity: 0; }
+
+  /* life album (right of the person) */
+  .album {
+    position: absolute; left: 44vw; right: 2vw; top: 0; bottom: 0;
+    opacity: 0; pointer-events: none; transition: opacity .6s .35s;
+  }
+  body.met .album { opacity: 1; pointer-events: auto; }
+  /* every photo is its own card in its own proportions: white mat + a wobbly pen outline that boils */
+  .album .cards { position: absolute; left: 0; right: 0; top: 10vh; height: 74vh; }   /* top/height follow the bar (JS) */
+  .album .card {
+    position: absolute; left: 50%; top: 50%; padding: 12px; background: #fff;
+    opacity: 0; transition: opacity .45s; pointer-events: none;
+  }
+  .album .card.on { opacity: 1; pointer-events: auto; }
+  /* hover: the picture lifts a little off the page and tips a hair (separate from the inline position transform) */
+  .album .card { transition: opacity .45s, scale .3s cubic-bezier(.3,1.6,.5,1), translate .3s cubic-bezier(.3,1.6,.5,1), rotate .3s; }
+  .album .card.on:hover { scale: 1.035; translate: 0 -6px; rotate: -1.2deg; }
+  .album .card canvas { display: block; }
+  .album .card > svg.edge { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+  .album .card > svg.edge path { fill: none; stroke: #111; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+  .album .card .family { display: block; overflow: visible; filter: url(#boil-sm); }
+  .album .card.framed { padding: 30px; }
+  .album .card.strip { padding: 0; cursor: zoom-in; }
+  /* lightbox for the real photo */
+  .lightbox { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(255,255,255,.94);
+              opacity: 0; pointer-events: none; transition: opacity .3s; cursor: zoom-out; }
+  body.lb-open .lightbox { opacity: 1; pointer-events: auto; }
+  .lb-card { position: relative; padding: 14px; background: #fff; scale: .92; transition: scale .35s cubic-bezier(.3,1.5,.5,1); }
+  body.lb-open .lb-card { scale: 1; }
+  .lb-card img { display: block; max-width: 78vw; max-height: 78vh; }
+  .lb-card > svg.edge { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+  .lb-card > svg.edge path { fill: none; stroke: #111; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+  .album .card > svg.edge.slots { inset: 0; }
+  .album .card > svg.edge.slots text { font-family: 'Shadows Into Light', cursive; font-size: 10px; fill: #111; stroke: none; }
+  .album .card > svg.edge.inner { inset: 12px; width: calc(100% - 24px); height: calc(100% - 24px); }
+  .album .card .family path { fill: none; stroke: #111; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+  .album .card .family .solid { fill: #fff; }
+  .album .empty { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; font-family: 'Shadows Into Light', cursive; font-size: 18px; opacity: .45; }
+  .album .when { position: absolute; left: 0; right: 0; text-align: center; font-family: 'Shadows Into Light', cursive; font-size: clamp(18px, 1.8vw, 24px); min-height: 1.4em; }
+
+  /* parked for now (not on the bar): photo pile, record player, globe */
+  .shelf { display: none !important; }
+
+  /* desk globe (bar 100) */
+  .globe { position: absolute; left: 44vw; right: 2vw; top: 4vh; bottom: 10vh; transform: none; }
+  body.met .globe.on { transform: none; }
+  .globe svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+  .globe svg path { fill: none; stroke: #111; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+  .globe canvas { position: absolute; cursor: grab; touch-action: none; }
+  .globe canvas:active { cursor: grabbing; }
+
+  /* ---------- phone (top right) + chat ---------- */
+  .phone-btn { position: fixed; top: 22px; right: 26px; z-index: 8; width: 40px; height: 64px; border: 0; background: none; padding: 0; cursor: pointer; }
+  .phone-btn svg, .chat svg.outline { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+  .phone-btn path, .chat path { fill: none; stroke: #111; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+  .phone-btn:hover { transform: rotate(-6deg); }
+  .phone-btn .dot { position: absolute; top: -4px; right: -6px; width: 9px; height: 9px; border-radius: 50%; background: #111; transition: opacity .3s; }
+  body.chatted .phone-btn .dot { opacity: 0; }
+
+  .chat {
+    position: fixed; z-index: 7; top: 50%; left: 50%; width: min(340px, 86vw); height: min(620px, 82vh);
+    transform: translate(-50%, -50%) scale(.6); transform-origin: center; opacity: 0; pointer-events: none;
+    transition: opacity .3s, transform .45s cubic-bezier(.3,1.4,.5,1);
+    font-family: 'Shadows Into Light', cursive; color: #111;
+  }
+  body.chat-open .chat { opacity: 1; pointer-events: auto; transform: translate(-50%, -50%) scale(1); }
+  /* while the big phone is out, the little one disappears; clicking outside closes it */
+  .phone-btn { transition: opacity .25s, transform .25s; }
+  body.chat-open .phone-btn { opacity: 0; pointer-events: none; transform: scale(.5); }
+  .chat-backdrop { position: fixed; inset: 0; z-index: 6; display: none; }
+  /* everything behind the phone goes away while it's open */
+  .under, .caption, .music { transition: opacity .35s; }
+  body.chat-open #top, body.chat-open .under, body.chat-open .caption, body.chat-open .music {
+    opacity: 0 !important; pointer-events: none !important;
+  }
+  body.chat-open .chat-backdrop { display: block; }
+  .chat .paper { position: absolute; inset: 0; background: #fff; border-radius: 34px; }
+  .chat .head { position: absolute; left: 0; right: 0; top: 46px; text-align: center; font-size: 22px; }
+  .chat .msgs { position: absolute; left: 22px; right: 22px; top: 92px; bottom: 286px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding: 4px 4px 10px; scrollbar-width: none; }
+  .chat .msgs::-webkit-scrollbar { display: none; }
+  .bubble { position: relative; max-width: 78%; padding: 10px 16px; font-size: 20px; line-height: 1.3; animation: pop .35s cubic-bezier(.3,1.6,.5,1); }
+  .bubble.them { align-self: flex-start; }
+  .bubble.me { align-self: flex-end; }
+  .bubble svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+  .bubble.typing span { display: inline-block; animation: blink 1s infinite; }
+  .bubble.typing span:nth-child(2) { animation-delay: .2s; } .bubble.typing span:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 50% { opacity: .2; } }
+  @keyframes pop { from { transform: scale(.7); opacity: 0; } }
+  /* the reply area: separated by a pen line, its own hint, dashed full-width buttons (not bubbles) */
+  .chat .replies { position: absolute; left: 22px; right: 22px; bottom: 80px; height: 196px; }   /* clear of the home button */
+  .chat .replies .sep { position: absolute; left: -4px; right: -4px; top: 0; height: 6px; width: calc(100% + 8px); overflow: visible; }
+  .chat .replies .hint { position: absolute; left: 2px; top: 12px; font-size: 15px; opacity: .45; transition: opacity .3s; }
+  .chat .replies:not(.ready) .hint { opacity: 0; }
+  /* room for many replies: the list scrolls, and fades out at the bottom when there's more */
+  .chat .choices { position: absolute; left: -6px; right: -6px; top: 38px; bottom: 0; padding: 4px 6px 18px; display: flex; flex-direction: column; gap: 10px;
+                   overflow-y: auto; scrollbar-width: none; -webkit-mask-image: linear-gradient(#000 82%, transparent); mask-image: linear-gradient(#000 82%, transparent); }
+  .chat .choices::-webkit-scrollbar { display: none; }
+  .choice { flex: none; }
+  .choice { position: relative; width: 100%; text-align: left; border: 0; background: none; padding: 7px 14px; font: inherit; font-size: 19px; color: #111; cursor: pointer; transition: transform .15s, background .15s; }
+  .choice::before { content: '→ '; opacity: .6; }
+  .choice:hover { transform: translateX(4px); background: rgba(17,17,17,.04); }
+  .choice svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+  .choice svg path { stroke-dasharray: 5 6; }
+
+  /* ---------- personality page ---------- */
+  .traits {
+    position: fixed; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center; gap: clamp(24px, 5vw, 80px);
+    padding: 0 6vw; opacity: 0; pointer-events: none; transition: opacity .6s .2s;
+  }
+  body.traits-on .traits { opacity: 1; pointer-events: auto; }
+  body.chat-open .traits { opacity: 0 !important; pointer-events: none !important; }
+  .critter-wrap { display: flex; flex-direction: column; align-items: center; }
+  .critter { width: min(40vw, 58vh, 440px); height: auto; overflow: visible; cursor: pointer; touch-action: none; }   /* no filter: it redraws every frame */
+  .critter path { fill: none; stroke: #111; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+  .traits-text { max-width: 360px; font-family: 'Shadows Into Light', cursive; }
+  .traits-text h2 { font-weight: 400; font-size: clamp(34px, 3.4vw, 50px); line-height: 1.1; }
+  .traits-text p { margin-top: 18px; font-size: clamp(20px, 1.7vw, 25px); line-height: 1.45; }
+
+  /* ---------- passion page ---------- */
+  .passion { position: fixed; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+             opacity: 0; pointer-events: none; transition: opacity .6s .2s; font-family: 'Shadows Into Light', cursive; }
+  .passion-title { font-weight: 400; font-size: clamp(30px, 3.2vw, 46px); }
+  .passion-ask { font-size: clamp(19px, 1.6vw, 24px); opacity: .7; }
+  body.passion-on .passion { opacity: 1; pointer-events: auto; }
+  body.chat-open .passion { opacity: 0 !important; pointer-events: none !important; }
+  .fire { width: min(78vw, 70vh * 640 / 520, 760px); height: auto; overflow: visible; touch-action: none; }
+  .fire path, .fire circle, .fire ellipse { fill: none; stroke: #111; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+  .fire .solid { fill: #fff; }
+  .fire #woodPile { cursor: grab; }
+  .fire #carry { cursor: grabbing; }
+
+  /* captions on the home page, like subtitles */
+  .caption {
+    position: fixed; left: 50%; top: 80vh; transform: translateX(-50%); z-index: 4;
+    /* thin, single-stroke handwriting — close to the pen line of "About me" */
+    font-family: 'Shadows Into Light', cursive; font-weight: 400; font-size: clamp(20px, 2.2vw, 30px); letter-spacing: 0.02em; white-space: nowrap;
+    opacity: 0; transition: opacity .7s; pointer-events: none; filter: url(#boil-sm);
+  }
+  .caption.on { opacity: 1; }
+  .caption a { color: inherit; text-decoration: none; pointer-events: auto; cursor: pointer; }
+  .caption a:hover { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; }
+  body.next .caption { opacity: 0; }
+  /* the music button lives on the home page only */
+  .music { transition: opacity .4s; }
+  body.next .music { opacity: 0; pointer-events: none; }
+
+  /* ---------- top: the drawing, erasable ---------- */
+  #top { transition: transform 0.9s cubic-bezier(.7,0,.2,1), opacity 0.9s; }
+  body.next #top { transform: translateY(-100%); opacity: 0; pointer-events: none; }
+  #top { cursor: default; position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: none; touch-action: none; }
+  .music path {
+    fill: none; stroke: #111; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    vector-effect: non-scaling-stroke; /* stays 2px at any size */
+  }
+
+
+  /* music button, bottom center — just the button */
+  .music {
+    position: fixed; left: 50%; bottom: 5vh; transform: translateX(-50%); z-index: 3;
+    width: 64px; height: 64px; padding: 0; border: 0; background: none; cursor: pointer;
+    filter: url(#boil-sm);
+  }
+  .music svg { width: 100%; height: 100%; overflow: visible; }
+  .music .pause { display: none; }
+  .music.playing .play { display: none; }
+  .music.playing .pause { display: inline; }
+</style>
+</head>
+<body>
+
+<!-- line boil: lines are 'redrawn' a few times a second, like hand-drawn animation frames -->
+<svg width="0" height="0" style="position:absolute">
+  <filter id="boil" x="-8%" y="-15%" width="116%" height="130%">
+    <feTurbulence id="turb" type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="1" result="n" />
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="12" xChannelSelector="R" yChannelSelector="G" />
+  </filter>
+  <filter id="boil-sm" x="-20%" y="-20%" width="140%" height="140%">
+    <feTurbulence id="turb2" type="fractalNoise" baseFrequency="0.06" numOctaves="2" seed="1" result="n" />
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="5" xChannelSelector="R" yChannelSelector="G" />
+  </filter>
+</svg>
+
+<!-- what's hiding under the drawing -->
+<div class="under">
+  <div class="life" aria-label="drag the slider to see me grow from a baby to a grandpa">
+    <div class="slider pen" id="slider" role="slider" tabindex="0" aria-label="age" aria-valuemin="0" aria-valuemax="100" aria-valuenow="75">
+      <svg viewBox="0 0 44 440" id="sliderSvg"></svg>
+    </div>
+    <div class="person pen"><svg viewBox="0 0 200 300" id="personSvg"></svg></div>
+  </div>
+
+  <!-- things that show up on the right as you move along the bar -->
+  <!-- life album: one tidy framed photo that follows the bar; at the very top, a drawn family portrait -->
+  <div class="album" id="album" data-dir="photos/life/">
+    <div class="cards" id="albumCards">
+      <p class="empty" id="albumEmpty">add photos to<br/>photos/life/</p>
+    </div>
+    <p class="when" id="albumWhen"></p>
+  </div>
+  <div class="shelf pile" id="pile" data-at="50" data-dir="photos/pile/" aria-label="photos — drag them around"></div>
+  <div class="shelf records" id="records" data-at="25" data-dir="music/cds/" aria-label="record player — drop a CD on it to play">
+    <div class="stage"><svg class="player" viewBox="0 0 420 340" aria-hidden="true"></svg></div>
+  </div>
+  <div class="shelf globe" id="globe" data-at="100" aria-label="a desk globe — drag to spin it">
+    <canvas></canvas>
+    <svg viewBox="0 0 500 560" preserveAspectRatio="xMidYMid meet" aria-hidden="true"></svg>
+  </div>
+</div>
+
+<!-- the drawing on top: a canvas (white sheet + face); click the face to chat -->
+<canvas id="top" aria-label="line drawing of me: a guy with a mushroom cut and round glasses. Click the face to chat"></canvas>
+
+<!-- the face drawing; rendered into a few 'boil' frames once, then drawn on the canvas -->
+<template id="faceTpl">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 288">
+      <!-- hair: round mushroom cut -->
+      <path d="M60 150 C 46 112, 52 62, 94 42 C 120 31, 152 33, 174 48 C 198 66, 198 112, 184 150" />
+      <!-- heavy bangs down to the brows -->
+      <path d="M60 150 C 64 132, 70 121, 80 122 C 104 125, 138 125, 160 121 C 172 119, 179 131, 184 150" />
+      <path d="M102 58 C 97 84, 93 104, 91 123" />
+      <path d="M131 54 C 133 84, 135 104, 137 124" />
+      <path d="M160 68 C 166 88, 168 106, 167 121" />
+      <path d="M78 76 C 72 92, 70 108, 72 122" />
+      <!-- face + ears -->
+      <path d="M65 142 C 64 172, 74 202, 99 220 C 110 227, 132 227, 143 220 C 168 202, 178 172, 178 142" />
+      <path d="M65 153 C 54 148, 52 171, 63 179" />
+      <path d="M178 153 C 189 148, 191 171, 180 179" />
+      <!-- round wire glasses -->
+      <path d="M76 149 C 76 137, 86 129, 97 129 C 108 129, 117 138, 117 149 C 117 160, 108 168, 97 168 C 86 168, 76 160, 76 149 Z" />
+      <path d="M125 149 C 125 138, 134 129, 145 129 C 156 129, 166 137, 166 149 C 166 160, 156 168, 145 168 C 134 168, 125 160, 125 149 Z" />
+      <path d="M117 146 C 120 142, 122 142, 125 146" />
+      <path d="M76 145 L 64 142" />
+      <path d="M166 145 L 179 142" />
+      <!-- eyes: calm (default) -->
+      <g class="calm">
+        <path d="M89 150 C 93 146, 100 146, 104 150" />
+        <path d="M97 152 C 95.5 152, 95.5 154.5, 97 154.5 C 98.5 154.5, 98.5 152, 97 152 Z" />
+        <path d="M138 150 C 142 146, 149 146, 153 150" />
+        <path d="M145 152 C 143.5 152, 143.5 154.5, 145 154.5 C 146.5 154.5, 146.5 152, 145 152 Z" />
+      </g>
+      <!-- eyes: smiling (on hover) -->
+      <g class="smile">
+        <path d="M89 153 C 92 146, 101 146, 104 153" />
+        <path d="M138 153 C 141 146, 150 146, 153 153" />
+      </g>
+      <!-- nose + mouth -->
+      <path d="M122 160 C 120 169, 117 176, 121 179 C 124 181, 128 179, 130 178" />
+      <g class="calm">
+        <path d="M108 196 C 115 193.5, 127 193.5, 134 196" />
+        <path d="M112 201 C 119 203.5, 125 203.5, 130 201" />
+      </g>
+      <g class="smile">
+        <path d="M104 191 C 112 203, 130 203, 138 191" />
+        <path d="M101 189 C 102 191, 103 192, 105 192" />
+        <path d="M141 189 C 140 191, 139 192, 137 192" />
+      </g>
+      <!-- neck, collar, shoulders -->
+      <path d="M103 220 C 103 230, 103 238, 102 246" />
+      <path d="M139 220 C 139 230, 139 238, 140 246" />
+      <path d="M102 240 L 84 259 L 110 270 L 121 251 L 132 270 L 158 259 L 140 240" />
+      <path d="M84 259 C 62 265, 42 272, 22 284" />
+      <path d="M158 259 C 180 265, 200 272, 220 284" />
+      <path d="M121 251 L 121 284" />
+    </svg>
+</template>
+
+
+
+<p class="caption" id="caption" aria-live="polite"></p>
+
+<!-- phone (top right): opens the chat -->
+<button class="phone-btn" id="phoneBtn" aria-label="open chat"><svg viewBox="0 0 40 64" id="phoneIcon"></svg><span class="dot"></span></button>
+<!-- personality: a round, soft something on the left that bristles when you poke it; words on the right -->
+<section class="traits" id="traits" aria-label="my personality">
+  <div class="critter-wrap">
+    <svg class="critter" id="critter" viewBox="0 0 400 400" role="img" aria-label="a round soft creature — poke it and spikes pop out">
+      <path id="critterBody" style="fill:#fff" />
+      <g id="critterFace"></g>
+    </svg>
+  </div>
+  <div class="traits-text">
+    <h2>round &amp; soft</h2>
+    <p>I'm pretty round and easygoing, most of the time.</p>
+    <p>But poke me, and I might play a little prank on you&nbsp;— or get a tiny bit grumpy, now and then.</p>
+  </div>
+</section>
+
+<!-- passion: a campfire; drag logs from the pile into it and it roars -->
+<section class="passion" id="passion" aria-label="my passion: a campfire — drag logs into it to make it burn bigger">
+  <h2 class="passion-title">Let me show you my passion.</h2>
+  <svg class="fire" id="fire" viewBox="0 0 640 520">
+    <defs>
+      <linearGradient id="flameFill" gradientUnits="userSpaceOnUse" x1="0" y1="420" x2="0" y2="40">
+        <stop offset="0" stop-color="#ffc48f" /><stop offset=".45" stop-color="#ffe2c4" /><stop offset="1" stop-color="#fff6ec" />
+      </linearGradient>
+      <radialGradient id="fireGlow"><stop offset="0" stop-color="#ffb06a" stop-opacity=".38" /><stop offset="1" stop-color="#ffb06a" stop-opacity="0" /></radialGradient>
+    </defs>
+    <ellipse id="glow" cx="250" cy="360" rx="220" ry="190" style="fill:url(#fireGlow);stroke:none" />
+    <g id="flames"></g>
+    <g id="fireLogs"></g>
+    <g id="sparks"></g>
+    <g id="woodPile"></g>
+    <g id="carry"></g>
+  </svg>
+  <p class="passion-ask">Throw in a log — make my passion burn bigger!</p>
+</section>
+
+<div class="chat-backdrop" id="chatBackdrop"></div>
+<div class="chat" id="chat" role="dialog" aria-label="chat with jiwon">
+  <div class="paper"></div>
+  <svg class="outline" id="chatOutline" viewBox="0 0 340 620" preserveAspectRatio="none"></svg>
+  <div class="msgs" id="msgs" aria-live="polite"></div>
+  <div class="replies" id="replies">
+    <svg class="sep" id="replySep" viewBox="0 0 300 6" preserveAspectRatio="none"></svg>
+    <div class="hint">pick a reply</div>
+    <div class="choices" id="choices"></div>
+  </div>
+</div>
+
+
+<button class="music" id="music" aria-label="music">
+  <svg viewBox="0 0 64 64">
+    <path class="play" d="M22 15 C 32 21, 40 26, 48 32 C 40 37, 31 43, 22 49 C 21 38, 21 27, 22 15 Z" />
+    <path class="pause" d="M25 17 C 24 28, 25 38, 25 47 M40 16 C 41 27, 39 38, 40 47" />
+  </svg>
+</button>
+<!-- song file lives in music/ -->
+<audio id="cdAudio" loop preload="none"></audio>
+<audio id="song" src="./music/%5BThey%20Long%20To%20Be%5D%20Close%20To%20You.mp3" loop preload="auto"></audio>
+
+<script>
+// line boil: step through a few noise frames (~8 per second), no smooth motion in between
+const turb = document.getElementById('turb'), turb2 = document.getElementById('turb2');
+const BOIL_SEEDS = [1, 7, 13, 21];
+let lastBoil = -1;
+function frame(now) {
+  const f = Math.floor(now / 125) % BOIL_SEEDS.length;
+  if (f !== lastBoil) {
+    lastBoil = f;
+    turb.setAttribute('seed', BOIL_SEEDS[f]);
+    turb2.setAttribute('seed', BOIL_SEEDS[(f + 2) % BOIL_SEEDS.length]);
+    if (typeof onBoil === 'function') onBoil(f);
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// ---------- the drawing layer (canvas) ----------
+// base = white sheet + face (pre-rendered boil frames).
+// Click the face to go to the next page.
+const canvas = document.getElementById('top');
+const ctx = canvas.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+const face = { x: 0, y: 0, w: 0, h: 0 };
+const frames = { calm: [], smile: [] };
+let boil = 0, smiling = false;
+
+function layout() {
+  DPR = Math.min(devicePixelRatio, 2);
+  W = document.documentElement.clientWidth; H = document.documentElement.clientHeight;
+  canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  face.w = Math.max(180, Math.min(W * 0.3, H * 0.52, 380));
+  face.h = face.w * 288 / 240;
+  face.x = (W - face.w) / 2;
+  face.y = (H - face.h) / 2 - H * 0.08;      // centered, nudged up
+  // the caption follows the face, just under the shoulders
+  document.getElementById('caption').style.top = Math.round(face.y + face.h + H * 0.07) + 'px';
+  buildFrames();
+}
+
+// render the face SVG with the boil filter at each seed, once, into images
+function buildFrames() {
+  const tpl = document.getElementById('faceTpl').content.querySelector('svg');
+  const k = 240 / face.w;                       // viewBox units per screen px
+  for (const mood of ['calm', 'smile']) {
+    const svg = tpl.cloneNode(true);
+    svg.querySelectorAll(mood === 'calm' ? '.smile' : '.calm').forEach((n) => n.remove());
+    svg.setAttribute('width', Math.round(face.w * DPR));
+    svg.setAttribute('height', Math.round(face.h * DPR));
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('fill', 'none'); g.setAttribute('stroke', '#111'); g.setAttribute('stroke-width', 2 * k);
+    g.setAttribute('stroke-linecap', 'round'); g.setAttribute('stroke-linejoin', 'round');
+    g.setAttribute('filter', 'url(#f)');
+    while (svg.firstChild) g.appendChild(svg.firstChild);
+    svg.appendChild(g);
+    frames[mood] = BOIL_SEEDS.map((seed) => {
+      const src = svg.outerHTML.replace('<g ', `<defs><filter id="f" x="-10%" y="-10%" width="120%" height="120%">` +
+        `<feTurbulence type="fractalNoise" baseFrequency="${(0.02 / k).toFixed(4)}" numOctaves="2" seed="${seed}" result="n"/>` +
+        `<feDisplacementMap in="SourceGraphic" in2="n" scale="${(12 * k).toFixed(2)}" xChannelSelector="R" yChannelSelector="G"/>` +
+        `</filter></defs><g `);
+      const img = new Image();
+      img.onload = () => render();
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(src);
+      return img;
+    });
+  }
+}
+
+// full redraw: only on a boil tick, a mood change or a resize
+function render() {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+  const img = frames[smiling ? 'smile' : 'calm'][boil];
+  if (img && img.complete && img.naturalWidth) ctx.drawImage(img, face.x, face.y, face.w, face.h);
+}
+
+layout();
+// re-center whenever the viewport size actually changes (also catches the first settle after load)
+let lastSize = '', resizeT;
+const relayout = () => {
+  const size = document.documentElement.clientWidth + 'x' + document.documentElement.clientHeight + '@' + devicePixelRatio;
+  if (size === lastSize) return;
+  lastSize = size; layout(); render();
+};
+new ResizeObserver(() => { clearTimeout(resizeT); resizeT = setTimeout(relayout, 60); }).observe(document.documentElement);
+addEventListener('load', relayout);
+
+// ---------- the face: smiles when you hover, opens the chat when you click ----------
+const isOverFace = (x, y) =>
+  x > face.x + face.w * 0.15 && x < face.x + face.w * 0.85 && y > face.y && y < face.y + face.h * 0.85;
+canvas.addEventListener('pointermove', (e) => {
+  const over = isOverFace(e.clientX, e.clientY);
+  canvas.style.cursor = over ? 'pointer' : 'default';
+  if (over !== smiling) { smiling = over; render(); }
+});
+canvas.addEventListener('pointerleave', () => { if (smiling) { smiling = false; render(); } });
+canvas.addEventListener('click', (e) => { if (isOverFace(e.clientX, e.clientY)) openChat(); });
+
+// ---------- pages: 0 home (face), 1 me growing up (reached from the phone chat) ----------
+const PAGES = ['', '#me', '#personality', '#passion'];
+let page = 0;
+// subtitles when you arrive on the home page
+const CAPTIONS = ["“Hi, this is my personal page.”", "“Have fun looking around!”"];
+const captionEl = document.getElementById('caption');
+let captionTimers = [];
+function playCaptions() {
+  captionTimers.forEach(clearTimeout); captionTimers = [];
+  captionEl.classList.remove('on');
+  let t = 700;
+  CAPTIONS.forEach((line) => {
+    captionTimers.push(setTimeout(() => { captionEl.textContent = line; captionEl.classList.add('on'); }, t));
+    captionTimers.push(setTimeout(() => captionEl.classList.remove('on'), t + 2800));
+    t += 3600;
+  });
+  // last: my Instagram, and it stays
+  captionTimers.push(setTimeout(() => {
+    captionEl.innerHTML = '<a href="https://www.instagram.com/jang__jione_/" target="_blank" rel="noopener">@jang__jione_</a>';
+    captionEl.classList.add('on');
+  }, t));
+}
+function show(n) {
+  if (n === 0 && page !== 0) requestAnimationFrame(render);
+  if (n === 1 && page !== 1 && window.resetLife) window.resetLife();   // the life page always starts at 'baby'
+  if (n === 0 && page !== 0) playCaptions();
+  page = n;
+  document.body.classList.toggle('next', n >= 1);
+  document.body.classList.toggle('met', n === 1);
+  document.body.classList.toggle('traits-on', n === 2);
+  document.body.classList.toggle('passion-on', n === 3);
+}
+function goTo(n) {
+  n = Math.max(0, Math.min(PAGES.length - 1, n));
+  if (n === page) return;
+  show(n);
+  history.pushState(null, '', PAGES[n] || location.pathname);   // browser back/forward work too
+}
+function syncPage() { show(Math.max(0, PAGES.indexOf(location.hash))); }
+addEventListener('popstate', syncPage);
+syncPage();
+if (page === 0) playCaptions();
+
+// ---------- About me: a person who grows up as you drag the bar ----------
+// Everything is computed from a handful of numbers (height, head size, posture…) that blend between
+// five stages, so dragging only rewrites a few path strings — no images, no layout.
+const SVGNS = 'http://www.w3.org/2000/svg';
+const STAGES = ['아기', '어린이', '학생', '지금', '할아버지'];
+//            baby   child  teen   now    grandpa
+const KEY = {
+  H:     [118,   175,   228,   248,   234],   // total height
+  k:     [0.40,  0.37,  0.34,  0.33,  0.32],  // head drawing scale (heads below are drawn in the home-face frame)
+  legR:  [0.27,  0.40,  0.46,  0.47,  0.45],  // legs / height
+  armR:  [0.22,  0.253, 0.27,  0.27,  0.264], // arm / height
+  sw:    [16,    19,    22,    24,    23],    // half shoulder width
+  armL:  [150,   22,    14,    12,    14],    // left arm angle from straight down (deg)
+  armRt: [150,   22,    14,    12,    28],    // right arm angle (grandpa reaches for the cane)
+  lean:  [0,     0,     0,     0,     9],     // upper body lean (deg)
+  knee:  [6,     0,     0,     0,     6],     // knee bend
+  spread:[16,    14,    15,    16,    18],    // feet apart
+  armW:  [8,     8,     9,     10,    10],    // sleeve width
+  legW:  [12,    11,    13,    14,    14],    // trouser width
+};
+function sample(arr, a) {
+  const x = a * (arr.length - 1), i = Math.min(arr.length - 2, Math.floor(x)), t = x - i;
+  const e = t * t * (3 - 2 * t);
+  return arr[i] + (arr[i + 1] - arr[i]) * e;
+}
+const fade = (a, from, to) => Math.max(0, Math.min(1, (a - from) / (to - from)));   // 0→1 between from..to
+const f1 = (n) => n.toFixed(1);
+const P = (pts) => 'M' + pts.map((p) => f1(p[0]) + ' ' + f1(p[1])).join(' L');
+
+const personSvg = document.getElementById('personSvg');
+const mk = (tag, attrs = {}) => { const n = document.createElementNS(SVGNS, tag); for (const a in attrs) n.setAttribute(a, attrs[a]); return n; };
+// a figure = body parts + one head group per stage, inside some <svg>/<g>
+// (drawn back to front, filled white so overlaps hide what's behind, like a real drawing)
+function makeFigure(parent, heads, smileHeads = null) {
+  const fig = { parts: {}, headGroups: [], smileGroups: [] };
+  ['arms', 'hands', 'legs', 'shoes', 'body', 'cane'].forEach((k) => {
+    fig.parts[k] = mk('path', k === 'cane' ? {} : { style: 'fill:#fff' });
+    parent.appendChild(fig.parts[k]);
+  });
+  fig.headGroups = heads.map((paths) => {
+    const g = mk('g');
+    paths.forEach((d) => g.appendChild(mk('path', { d })));
+    parent.appendChild(g);
+    return g;
+  });
+  if (smileHeads) fig.smileGroups = smileHeads.map((paths) => {
+    const g = mk('g', { style: 'display:none' });
+    paths.forEach((d) => g.appendChild(mk('path', { d })));
+    parent.appendChild(g);
+    return g;
+  });
+  return fig;
+}
+
+// Heads, drawn in the same style and frame as the home face (240 × 288, chin at 121,225).
+// One drawing per stage; while dragging they cross-fade, when you let go it settles on one.
+const HOME = {
+  hair: 'M60 150 C 46 112, 52 62, 94 42 C 120 31, 152 33, 174 48 C 198 66, 198 112, 184 150',
+  bangs: 'M60 150 C 64 132, 70 121, 80 122 C 104 125, 138 125, 160 121 C 172 119, 179 131, 184 150',
+  strands: ['M102 58 C 97 84, 93 104, 91 123', 'M131 54 C 133 84, 135 104, 137 124', 'M160 68 C 166 88, 168 106, 167 121', 'M78 76 C 72 92, 70 108, 72 122'],
+  face: 'M65 142 C 64 172, 74 202, 99 220 C 110 227, 132 227, 143 220 C 168 202, 178 172, 178 142',
+  ears: ['M65 153 C 54 148, 52 171, 63 179', 'M178 153 C 189 148, 191 171, 180 179'],
+  glasses: ['M76 149 C 76 137, 86 129, 97 129 C 108 129, 117 138, 117 149 C 117 160, 108 168, 97 168 C 86 168, 76 160, 76 149 Z',
+            'M125 149 C 125 138, 134 129, 145 129 C 156 129, 166 137, 166 149 C 166 160, 156 168, 145 168 C 134 168, 125 160, 125 149 Z',
+            'M117 146 C 120 142, 122 142, 125 146', 'M76 145 L 64 142', 'M166 145 L 179 142'],
+  eyes: ['M89 150 C 93 146, 100 146, 104 150', 'M97 152 C 95.5 152, 95.5 154.5, 97 154.5 C 98.5 154.5, 98.5 152, 97 152 Z',
+         'M138 150 C 142 146, 149 146, 153 150', 'M145 152 C 143.5 152, 143.5 154.5, 145 154.5 C 146.5 154.5, 146.5 152, 145 152 Z'],
+  nose: 'M122 160 C 120 169, 117 176, 121 179 C 124 181, 128 179, 130 178',
+  mouth: ['M108 196 C 115 193.5, 127 193.5, 134 196', 'M112 201 C 119 203.5, 125 203.5, 130 201'],
+  neck: ['M103 220 C 103 230, 103 238, 102 246', 'M139 220 C 139 230, 139 238, 140 246',
+         'M102 240 L 84 259 L 110 270 L 121 251 L 132 270 L 158 259 L 140 240', 'M121 251 L 121 268'],
+};
+const dotAt = (x, y, r) => `M${x - r} ${y} a${r} ${r} 0 1 0 ${2 * r} 0 a${r} ${r} 0 1 0 ${-2 * r} 0`;
+const HEADS = [
+  // baby: big round head, one curl, big eyes, little smile
+  ['M57 156 a64 69 0 1 0 128 0 a64 69 0 1 0 -128 0',
+   'M121 87 C 116 74, 129 66, 133 74 C 136 80, 127 84, 124 79',
+   'M57 152 C 48 148, 47 168, 58 172', 'M185 152 C 194 148, 195 168, 184 172',
+   dotAt(100, 160, 3.5), dotAt(142, 160, 3.5),
+   'M120 172 C 121 175, 123 175, 124 173',
+   'M84 182 C 88 179, 94 179, 97 182', 'M145 182 C 149 179, 155 179, 158 182',
+   'M111 190 C 116 197, 126 197, 131 190'],
+  // child: the mushroom cut already, rounder face, round eyes, open smile
+  [HOME.hair, HOME.bangs, ...HOME.strands,
+   'M66 142 C 64 180, 86 214, 121 216 C 156 214, 178 180, 176 142', ...HOME.ears,
+   dotAt(98, 154, 3.2), dotAt(144, 154, 3.2),
+   'M121 166 C 119 173, 121 177, 125 176',
+   'M107 189 C 114 198, 128 198, 135 189', 'M106 212 C 106 228, 106 238, 105 246', 'M136 212 C 136 228, 136 238, 137 246', ...HOME.neck.slice(2)],
+  // student: the home face without glasses
+  [HOME.hair, HOME.bangs, ...HOME.strands, HOME.face, ...HOME.ears, ...HOME.eyes, HOME.nose, ...HOME.mouth, ...HOME.neck],
+  // now: exactly the home face
+  [HOME.hair, HOME.bangs, ...HOME.strands, HOME.face, ...HOME.ears, ...HOME.glasses, ...HOME.eyes, HOME.nose, ...HOME.mouth, ...HOME.neck],
+  // grandpa: bald top, white tufts, wrinkles, bushy brows, moustache — same glasses
+  ['M65 142 C 58 92, 88 62, 121 62 C 154 62, 184 92, 178 142',
+   'M62 118 C 54 114, 50 122, 56 126 C 48 128, 50 138, 60 136', 'M181 118 C 189 114, 193 122, 187 126 C 195 128, 193 138, 183 136',
+   'M100 96 C 112 93, 130 93, 142 96', 'M104 106 C 114 104, 128 104, 138 106',
+   'M84 128 C 91 123, 100 123, 107 127', 'M135 127 C 142 123, 151 123, 158 128',
+   HOME.face, ...HOME.ears, ...HOME.glasses, ...HOME.eyes, HOME.nose,
+   'M104 192 C 110 186, 118 186, 121 190 C 124 186, 132 186, 138 192',
+   'M111 201 C 117 204, 125 204, 131 201', ...HOME.neck],
+];
+const HEAD_TOP = [87, 33, 33, 33, 62];      // top of each drawing (for the body's proportions)
+const HEAD_BASE = [226, 246, 246, 246, 246]; // where each drawing meets the shirt (chin for the baby, neck for the rest)
+// smiling versions of each stage (shown while you hover over him): crescent eyes + an open laugh
+const SMILE_EYES = ['M89 153 C 92 145, 101 145, 104 153', 'M138 153 C 141 145, 150 145, 153 153'];
+const LAUGH = 'M105 189 C 112 205, 130 205, 137 189 C 127 192, 115 192, 105 189 Z';
+const swapFace = (paths, drop, add) => [...paths.filter((d) => !drop.includes(d)), ...add];
+const SMILE_HEADS = [
+  swapFace(HEADS[0], [dotAt(100, 160, 3.5), dotAt(142, 160, 3.5), 'M111 190 C 116 197, 126 197, 131 190'],
+           ['M93 163 C 96 155, 104 155, 107 163', 'M135 163 C 138 155, 146 155, 149 163', 'M109 188 C 115 201, 127 201, 133 188 C 125 191, 117 191, 109 188 Z']),
+  swapFace(HEADS[1], [dotAt(98, 154, 3.2), dotAt(144, 154, 3.2), 'M107 189 C 114 198, 128 198, 135 189'],
+           ['M91 157 C 94 149, 102 149, 105 157', 'M137 157 C 140 149, 148 149, 151 157', LAUGH]),
+  swapFace(HEADS[2], [...HOME.eyes, ...HOME.mouth], [...SMILE_EYES, LAUGH]),
+  swapFace(HEADS[3], [...HOME.eyes, ...HOME.mouth], [...SMILE_EYES, LAUGH]),
+  swapFace(HEADS[4], [...HOME.eyes, 'M111 201 C 117 204, 125 204, 131 201'], [...SMILE_EYES, 'M110 198 C 116 207, 126 207, 132 198']),
+];
+const me = makeFigure(personSvg, HEADS, SMILE_HEADS);
+
+// an outlined limb along a polyline: width w0 at the start, w1 at the end, rounded tip
+function tube(pts, w0, w1) {
+  const n = pts.length, L = [], R = [];
+  for (let i = 0; i < n; i++) {
+    const a = pts[Math.max(0, i - 1)], b = pts[Math.min(n - 1, i + 1)];
+    let dx = b[0] - a[0], dy = b[1] - a[1]; const len = Math.hypot(dx, dy) || 1; dx /= len; dy /= len;
+    const w = (w0 + (w1 - w0) * (i / (n - 1))) / 2;
+    L.push([pts[i][0] - dy * w, pts[i][1] + dx * w]); R.push([pts[i][0] + dy * w, pts[i][1] - dx * w]);
+  }
+  const end = pts[n - 1], prev = pts[n - 2], el = Math.hypot(end[0] - prev[0], end[1] - prev[1]) || 1;
+  const tip = [end[0] + (end[0] - prev[0]) / el * w1 * 0.7, end[1] + (end[1] - prev[1]) / el * w1 * 0.7];
+  return 'M' + L.map((p) => f1(p[0]) + ' ' + f1(p[1])).join(' L') +
+    ` Q${f1(tip[0])} ${f1(tip[1])} ${f1(R[n - 1][0])} ${f1(R[n - 1][1])} L` +
+    R.slice(0, -1).reverse().map((p) => f1(p[0]) + ' ' + f1(p[1])).join(' L') + ' Z';
+}
+const oval = (c, rx, ry) => `M${f1(c[0] - rx)} ${f1(c[1])} a${f1(rx)} ${f1(ry)} 0 1 0 ${f1(2 * rx)} 0 a${f1(rx)} ${f1(ry)} 0 1 0 ${f1(-2 * rx)} 0`;
+
+function drawPerson(a, fig = me, opt = {}) {
+  const { parts, headGroups, smileGroups } = fig;
+  const waveK = opt.wave || 0, smile = !!opt.smile;
+  const k = {}; for (const key in KEY) k[key] = sample(KEY[key], a);
+  const w = HEADS.map((_, i) => Math.max(0, 1 - Math.abs(a * (HEADS.length - 1) - i)));   // cross-fade weights
+  const base = sample(HEAD_BASE, a);
+  const headH = (base - sample(HEAD_TOP, a)) * k.k;
+  const feetY = 288, cx = 100;
+  const legLen = k.H * k.legR, hipY = feetY - legLen;
+  const torso = k.H - legLen - headH;
+  const s = k.lean * Math.PI / 180, up = [Math.sin(s), -Math.cos(s)], side = [Math.cos(s), Math.sin(s)];
+  const hip = [cx, hipY];
+  const at = (o, u, v) => [o[0] + up[0] * u + side[0] * v, o[1] + up[1] * u + side[1] * v];
+  const neck = at(hip, torso, 0);
+  const shL = at(neck, -5, -k.sw), shR = at(neck, -5, k.sw);
+  const hipL = at(hip, 0, -k.sw * 0.78), hipR = at(hip, 0, k.sw * 0.78);
+
+  // shirt
+  parts.body.setAttribute('d',
+    `M${f1(shL[0])} ${f1(shL[1])} Q${f1(neck[0])} ${f1(neck[1] - 4)} ${f1(shR[0])} ${f1(shR[1])}` +
+    ` Q${f1(shR[0] + 2)} ${f1((shR[1] + hipR[1]) / 2)} ${f1(hipR[0])} ${f1(hipR[1])}` +
+    ` L${f1(hipL[0])} ${f1(hipL[1])} Q${f1(shL[0] - 2)} ${f1((shL[1] + hipL[1]) / 2)} ${f1(shL[0])} ${f1(shL[1])}`);
+  // legs
+  const legL0 = at(hip, 0, -k.sw * 0.42), legR0 = at(hip, 0, k.sw * 0.42);
+  const footL = [cx - k.spread, feetY], footR = [cx + k.spread, feetY];
+  const kneeL = [(legL0[0] + footL[0]) / 2 - k.knee, (legL0[1] + footL[1]) / 2];
+  const kneeR = [(legR0[0] + footR[0]) / 2 + k.knee, (legR0[1] + footR[1]) / 2];
+  const ankle = (f) => [f[0], f[1] - 5];
+  parts.legs.setAttribute('d', tube([at(legL0, 6, 0), kneeL, ankle(footL)], k.legW, k.legW * 0.82) + ' ' +
+                               tube([at(legR0, 6, 0), kneeR, ankle(footR)], k.legW, k.legW * 0.82));
+  parts.shoes.setAttribute('d', oval([footL[0] - 3, feetY - 3], k.legW * 0.62, 3.6) + ' ' + oval([footR[0] + 3, feetY - 3], k.legW * 0.62, 3.6));
+  // arms
+  const armLen = k.H * k.armR;
+  const handOf = (sh, deg, sign) => { const r = (deg * Math.PI) / 180; return [sh[0] + Math.sin(r) * armLen * sign, sh[1] + Math.cos(r) * armLen]; };
+  let hL = handOf(shL, k.armL, -1);
+  const hR = handOf(shR, k.armRt, 1);
+  const elbow = (sh, h, sign) => [(sh[0] + h[0]) / 2 + 3 * sign, (sh[1] + h[1]) / 2];
+  const sL = at(shL, -1, k.armW * 0.35), sR = at(shR, -1, -k.armW * 0.35);
+  let eL = elbow(sL, hL, -1);
+  if (waveK > 0) {                                  // hello! the left arm goes up and the hand waves
+    const dir = (deg) => { const r = deg * Math.PI / 180; return [-Math.sin(r), Math.cos(r)]; };   // 0 = down, + = outwards
+    const up = dir(128), swing = 158 + Math.sin((opt.t || 0) * 11) * 20;
+    const we = [sL[0] + up[0] * armLen * 0.5, sL[1] + up[1] * armLen * 0.5];
+    const fw = dir(swing), wh = [we[0] + fw[0] * armLen * 0.52, we[1] + fw[1] * armLen * 0.52];
+    const mix = (p, q) => [p[0] + (q[0] - p[0]) * waveK, p[1] + (q[1] - p[1]) * waveK];
+    eL = mix(eL, we); hL = mix(hL, wh);
+  }
+  parts.arms.setAttribute('d', tube([sL, eL, hL], k.armW, k.armW * 0.78) + ' ' +
+                               tube([sR, elbow(sR, hR, 1), hR], k.armW, k.armW * 0.78));
+  parts.hands.setAttribute('d', oval(hL, k.armW * 0.42, k.armW * 0.5) + ' ' + oval(hR, k.armW * 0.42, k.armW * 0.5));
+  // heads: the drawing's neck meets the shirt, tilted with the body
+  const tf = `translate(${f1(neck[0])} ${f1(neck[1])}) rotate(${f1(k.lean)}) scale(${k.k.toFixed(3)}) translate(-121 ${f1(-base)})`;
+  headGroups.forEach((g, i) => {
+    g.style.display = !(smile && smileGroups.length) && w[i] > 0.001 ? '' : 'none';
+    g.style.opacity = w[i];
+    g.setAttribute('transform', tf);
+  });
+  smileGroups.forEach((g, i) => {
+    g.style.display = smile && w[i] > 0.001 ? '' : 'none';
+    g.style.opacity = w[i];
+    g.setAttribute('transform', tf);
+  });
+  // grandpa's cane
+  parts.cane.style.opacity = w[4];
+  parts.cane.setAttribute('d', `M${f1(hR[0] - 6)} ${f1(hR[1] - 4)} q 6 -8 10 0 L${f1(hR[0] + 5)} ${feetY}`);
+}
+
+// ---------- the age slider: a hand-drawn vertical bar with a knob ----------
+const slider = document.getElementById('slider'), sliderSvg = document.getElementById('sliderSvg');
+const BAR = { x: 22, top: 20, bottom: 420 };
+const FEET_Y = 288.6 / 300;                 // where the shoes touch the ground, as a fraction of the person drawing
+const TOP_Y = (288 - Math.max(...KEY.H)) / 300;   // top of the head at the tallest age ('now')
+const barPath = mk('path'), knob = mk('circle', { cx: BAR.x, cy: 0, r: 9, style: 'fill:#fff' });
+sliderSvg.append(barPath, knob);
+// the bar ends exactly at the person's feet (same baseline)
+function alignBar() {
+  const pr = personSvg.getBoundingClientRect(), sr = sliderSvg.getBoundingClientRect();
+  if (sr.height > 0) {                       // the bar runs exactly from the tallest me's head to the floor
+    BAR.bottom = Math.min(440, (pr.top + pr.height * FEET_Y - sr.top) / sr.height * 440);
+    BAR.top = Math.max(0, (pr.top + pr.height * TOP_Y - sr.top) / sr.height * 440);
+  }
+  const mid = (BAR.top + BAR.bottom) / 2;
+  barPath.setAttribute('d', `M${BAR.x} ${BAR.top} C ${BAR.x - 2} ${f1(mid - 80)}, ${BAR.x + 2} ${f1(mid + 80)}, ${BAR.x - 1} ${f1(BAR.bottom)}`);
+  knob.setAttribute('cy', BAR.bottom - (BAR.bottom - BAR.top) * age);
+  if (momentsReady) placeDots();
+  if (fitAlbumToBar) {
+    const sr = sliderSvg.getBoundingClientRect();
+    fitAlbumToBar(sr.top + sr.height * BAR.top / 440, sr.top + sr.height * BAR.bottom / 440);
+  }
+}
+let momentsReady = false;
+new ResizeObserver(alignBar).observe(document.querySelector('.life'));
+// the right-hand areas (photos, records) always start just right of the person, whatever the screen size
+// bar + person + album sit together, centred on the screen
+function placeMomentAreas() {
+  const life = document.querySelector('.life'), lr = life.getBoundingClientRect();
+  const span = lr.height || innerHeight * 0.6;
+  const gap = Math.max(16, innerWidth * 0.015);
+  const albumW = Math.round(Math.min(span * 0.68, innerWidth * 0.45));   // just wide enough for the strip / family frame
+  const left = Math.max(16, Math.round((innerWidth - (lr.width + gap + albumW)) / 2));
+  life.style.left = left + 'px';
+  const albumEl = document.getElementById('album');
+  if (albumEl) { albumEl.style.left = (left + lr.width + gap) + 'px'; albumEl.style.width = albumW + 'px'; albumEl.style.right = 'auto'; }
+  document.querySelectorAll('.pile, .records, .globe').forEach((el) => (el.style.left = (left + lr.width + gap) + 'px'));
+  if (typeof alignBar === 'function' && momentsReady) alignBar();   // positions moved: refit the album to the bar
+}
+new ResizeObserver(placeMomentAreas).observe(document.querySelector('.life'));
+addEventListener('resize', placeMomentAreas);
+let age = 0, pending = false;               // start as a baby
+
+// ---------- things along the bar: each .moment has data-at (0–100) ----------
+const moments = [...document.querySelectorAll('.moment')].map((el) => ({ el, at: +el.dataset.at }));
+const NEAR = 7;                                // shows within ±7 of its spot
+function updateMoments(v) {
+  for (const m of moments) m.el.classList.toggle('on', Math.abs(v - m.at) <= NEAR);
+}
+// a dot on the bar for each one
+const momentDots = moments.map(() => { const c = mk('circle', { r: 3.5, style: 'fill:#111' }); sliderSvg.insertBefore(c, knob); return c; });
+let albumDots = [];                              // { c: <circle>, at: 0–100 }
+let fitAlbumToBar = null;                        // set by the album: keeps photos between the bar's ends
+function placeDots() {
+  moments.forEach((m, i) => { momentDots[i].setAttribute('cx', BAR.x); momentDots[i].setAttribute('cy', BAR.bottom - (BAR.bottom - BAR.top) * m.at / 100); });
+  for (const d of albumDots) { d.c.setAttribute('cx', BAR.x); d.c.setAttribute('cy', BAR.bottom - (BAR.bottom - BAR.top) * d.at / 100); }
+}
+
+// a pile of photos: every image in photos/pile/ (read from the folder listing), scattered,
+// each with a pen outline. Drag them around; fling and they slide and turn a little.
+// hand-drawn outlines that 'boil' by swapping between 4 pre-drawn versions (no SVG filter = cheap)
+const photoOutlines = [];
+function boilPhotos(f) { for (const p of photoOutlines) if (p.outline.isConnected) p.outline.setAttribute('d', p.frames[f % 4]); }
+const jit = (a) => (Math.random() - 0.5) * a;
+function wobLine(x1, y1, x2, y2, j = 1.6) {
+  return `M${f1(x1 + jit(j))} ${f1(y1 + jit(j))} Q${f1((x1 + x2) / 2 + jit(j))} ${f1((y1 + y2) / 2 + jit(j))} ${f1(x2 + jit(j))} ${f1(y2 + jit(j))}`;
+}
+function wobCircle(cx, cy, r, j = 1.6) {          // a smooth circle drawn in one go, ends overlapping a little
+  const n = Math.max(24, Math.round(r * 0.6)), a0 = Math.random() * 6.28, p1 = Math.random() * 6.28, p2 = Math.random() * 6.28;
+  let d = '';
+  for (let i = 0; i <= n + 2; i++) {
+    const a = a0 + (i / n) * Math.PI * 2;
+    const rr = r + j * 0.5 * (Math.sin(2 * a + p1) * 0.6 + Math.sin(3 * a + p2) * 0.4);   // gentle, low-frequency wobble
+    d += (i ? ' L' : 'M') + f1(cx + Math.cos(a) * rr) + ' ' + f1(cy + Math.sin(a) * rr);
+  }
+  return d;
+}
+// sketchy pen strokes: big bumps are chosen once, each boil frame only adds a hair of noise
+function sketchLine(x1, y1, x2, y2, amp = 3, over = 5) {
+  const len = Math.hypot(x2 - x1, y2 - y1) || 1, ux = (x2 - x1) / len, uy = (y2 - y1) / len;
+  const n = Math.max(3, Math.round(len / 40));
+  const bumps = Array.from({ length: n + 1 }, (_, k) => (k === 0 || k === n ? 0.3 : 1) * amp * (Math.random() - 0.5) * 2);
+  const o1 = over * (0.3 + Math.random()), o2 = over * Math.random();
+  const ax = x1 - ux * o1, ay = y1 - uy * o1, bx = x2 + ux * o2, by = y2 + uy * o2;
+  return () => {
+    const pt = (k) => { const t = k / n, b = bumps[k] + jit(amp * 0.25);
+      return [ax + (bx - ax) * t - uy * b, ay + (by - ay) * t + ux * b]; };
+    let d = `M${f1(pt(0)[0])} ${f1(pt(0)[1])}`;
+    for (let k = 1; k <= n; k++) { const a = pt(k - 1), b = pt(k); d += ` Q${f1(a[0])} ${f1(a[1])} ${f1((a[0] + b[0]) / 2)} ${f1((a[1] + b[1]) / 2)}`; }
+    const e = pt(n); return d + ` L${f1(e[0])} ${f1(e[1])}`;
+  };
+}
+function sketchCircle(cx, cy, r, amp = 3) {
+  // drawn in one loop that doesn't quite close: starts a bit inside, ends a bit outside
+  const a0 = Math.random() * 6.28, p = [0, 0, 0].map(() => Math.random() * 6.28), drift = amp * (0.6 + Math.random() * 0.6);
+  return () => {
+    const n = Math.max(28, Math.round(r * 0.5)), extra = 0.18 + Math.random() * 0.12;
+    let d = '';
+    for (let i = 0; i <= n * (1 + extra / 6.28); i++) {
+      const a = a0 + (i / n) * Math.PI * 2, t = i / n;
+      const rr = r + amp * (Math.sin(2 * a + p[0]) * 0.5 + Math.sin(3 * a + p[1]) * 0.3 + Math.sin(5 * a + p[2]) * 0.2)
+                   + (t - 0.5) * drift + jit(amp * 0.15);
+      d += (i ? ' L' : 'M') + f1(cx + Math.cos(a) * rr) + ' ' + f1(cy + Math.sin(a) * rr);
+    }
+    return d;
+  };
+}
+const joinMakers = (...makers) => () => makers.map((m) => m()).join(' ');
+
+// a <path> whose drawing is one of 4 versions of make()
+function boilPath(parent, make, attrs = {}) {
+  const path = mk('path', attrs), frames = Array.from({ length: 4 }, make);
+  path.setAttribute('d', frames[0]);
+  parent.appendChild(path);
+  photoOutlines.push({ outline: path, frames });
+  return path;
+}
+(async function buildPile() {
+  const pile = document.getElementById('pile'), dir = pile.dataset.dir;
+  let files = [];
+  try {
+    const html = await (await fetch(dir)).text();
+    files = [...html.matchAll(/href="([^"?#]+\.(?:jpe?g|png|webp|gif))"/gi)].map((m) => m[1]);
+  } catch { /* no listing: nothing to show */ }
+  let z = 1;
+  const wob = (x1, y1, x2, y2) => {
+    const j = () => (Math.random() - 0.5) * 1.6;
+    return `M${f1(x1 + j())} ${f1(y1 + j())} Q${f1((x1 + x2) / 2 + j())} ${f1((y1 + y2) / 2 + j())} ${f1(x2 + j())} ${f1(y2 + j())}`;
+  };
+  for (const file of files) {
+    const el = document.createElement('div');
+    el.className = 'photo';
+    const w = Math.round(150 + Math.random() * 70);
+    el.style.width = w + 'px';
+    // pen outline: 4 slightly different drawings, swapped on each boil tick (cheap, no filter)
+    const svg = mk('svg', { viewBox: '0 0 100 100', preserveAspectRatio: 'none' });
+    const outline = mk('path');
+    // a sketchy frame: each side is its own bumpy stroke, overshooting the corners.
+    // The 4 boil frames share the same bumps and only differ a hair, so it wobbles but stays light.
+    const sides = [[0, 0, 100, 0], [100, 0, 100, 100], [100, 100, 0, 100], [0, 100, 0, 0]].map(([x1, y1, x2, y2]) => {
+      const n = 4, len = Math.hypot(x2 - x1, y2 - y1), ux = (x2 - x1) / len, uy = (y2 - y1) / len;
+      const over = 2 + Math.random() * 3;
+      const bumps = Array.from({ length: n + 1 }, (_, k) => (k === 0 || k === n ? 0.8 : 3) * (Math.random() - 0.5) * 2);
+      return { x1: x1 - ux * over, y1: y1 - uy * over, x2: x2 + ux * over * Math.random(), y2: y2 + uy * over * Math.random(), ux, uy, n, bumps };
+    });
+    const sketch = () => sides.map(({ x1, y1, x2, y2, ux, uy, n, bumps }) => {
+      const pt = (k) => { const t = k / n, b = bumps[k] + (Math.random() - 0.5) * 0.8;
+        return [x1 + (x2 - x1) * t - uy * b, y1 + (y2 - y1) * t + ux * b]; };
+      let d = `M${f1(pt(0)[0])} ${f1(pt(0)[1])}`;
+      for (let k = 1; k <= n; k++) { const a = pt(k - 1), b = pt(k); d += ` Q${f1(a[0])} ${f1(a[1])} ${f1((a[0] + b[0]) / 2)} ${f1((a[1] + b[1]) / 2)}`; }
+      const end = pt(n);
+      return d + ` L${f1(end[0])} ${f1(end[1])}`;
+    }).join(' ');
+    const frames = Array.from({ length: 4 }, sketch);
+    outline.setAttribute('d', frames[0]);
+    svg.appendChild(outline);
+    photoOutlines.push({ outline, frames });
+    pile.appendChild(el);
+
+    // state: position, angle, velocity
+    const st = { x: 0, y: 0, r: (Math.random() - 0.5) * 28, vx: 0, vy: 0, vr: 0 };
+    let queued = false;
+    const place = () => {                         // at most one style write per frame
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => { queued = false; el.style.transform = `translate3d(${st.x.toFixed(1)}px, ${st.y.toFixed(1)}px, 0) rotate(${st.r.toFixed(2)}deg)`; });
+    };
+
+    // decode once and shrink to the size it's shown at (originals can be thousands of px wide)
+    const img = new Image(); img.src = dir + file; img.decoding = 'async';
+    img.decode().then(() => {
+      const scale = Math.min(1, (w - 18) * Math.min(devicePixelRatio, 2) / img.naturalWidth);
+      const cv = document.createElement('canvas');
+      cv.width = Math.round(img.naturalWidth * scale); cv.height = Math.round(img.naturalHeight * scale);
+      const c = cv.getContext('2d'); c.imageSmoothingQuality = 'high';
+      c.drawImage(img, 0, 0, cv.width, cv.height);
+      el.prepend(cv); el.appendChild(svg);
+      const b = pile.getBoundingClientRect(), h = (w - 18) * cv.height / cv.width + 18;
+      st.x = Math.random() * Math.max(0, b.width - w);
+      st.y = Math.random() * Math.max(0, b.height - h);
+      place();
+      el.classList.add('ready');
+    }).catch(() => el.remove());
+    el.style.zIndex = z++;
+
+    let drag = null, raf = 0;
+    const glide = () => {                         // a little momentum after you let go
+      st.x += st.vx; st.y += st.vy; st.r += st.vr;
+      st.vx *= 0.9; st.vy *= 0.9; st.vr *= 0.88;
+      place();
+      raf = Math.abs(st.vx) + Math.abs(st.vy) > 0.2 ? requestAnimationFrame(glide) : 0;
+    };
+    el.addEventListener('pointerdown', (e) => {
+      cancelAnimationFrame(raf);
+      el.setPointerCapture(e.pointerId);
+      el.style.zIndex = z++;
+      drag = { px: e.clientX, py: e.clientY, t: performance.now() };
+      st.vx = st.vy = st.vr = 0;
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      const dx = e.clientX - drag.px, dy = e.clientY - drag.py, now = performance.now();
+      const dt = Math.max(8, now - drag.t);
+      st.x += dx; st.y += dy;
+      st.vx = dx / dt * 16; st.vy = dy / dt * 16;
+      st.r += dx * 0.04;                            // tilts as you drag it sideways
+      drag = { px: e.clientX, py: e.clientY, t: now };
+      place();
+    });
+    const drop = () => {
+      if (!drag) return;
+      drag = null;
+      st.vr = st.vx * 0.15;
+      raf = requestAnimationFrame(glide);
+    };
+    el.addEventListener('pointerup', drop);
+    el.addEventListener('pointercancel', drop);
+  }
+})();
+// ---------- record player + CDs (bar 25) ----------
+// Drop a CD on the platter: it snaps on, spins, the arm comes down and its song plays.
+// CDs come from music/cds/: "name.mp3" + "name.jpg" (same name) = one CD.
+(async function buildRecords() {
+  const box = document.getElementById('records'), dir = box.dataset.dir, svg = box.querySelector('.player');
+  const stage = box.querySelector('.stage'), STAGE_W = 790, STAGE_H = 440, PLAYER_TOP = 0, PS = 540 / 420;   // PS: player drawing → stage
+  let k = 1;                                        // stage scale
+  const fit = () => {
+    const b = box.getBoundingClientRect();
+    if (!b.width || !b.height) return;
+    k = Math.min(b.width / STAGE_W, b.height / STAGE_H);
+    stage.style.transform = `translate(${f1((b.width - STAGE_W * k) / 2)}px, ${f1((b.height - STAGE_H * k) / 2)}px) scale(${k.toFixed(4)})`;
+    stage.style.setProperty('--sw', (2 / k).toFixed(3) + 'px');
+  };
+  new ResizeObserver(fit).observe(box);
+  fit();
+  const audio = document.getElementById('cdAudio');
+
+  // the player, drawn with the pen
+  const PL = { cx: 172, cy: 172, r: 132 };
+  svg.appendChild(mk('rect', { class: 'paper', x: 8, y: 8, width: 404, height: 324, rx: 10 }));
+  boilPath(svg, joinMakers(sketchLine(10, 12, 410, 8, 4), sketchLine(410, 8, 412, 330, 4), sketchLine(412, 330, 8, 332, 4), sketchLine(8, 332, 10, 12, 4)));
+  boilPath(svg, sketchCircle(PL.cx, PL.cy, PL.r, 5));
+  boilPath(svg, sketchCircle(PL.cx, PL.cy, PL.r - 14, 3.5));
+  boilPath(svg, sketchCircle(PL.cx, PL.cy, 5, 1));
+  boilPath(svg, joinMakers(sketchCircle(370, 296, 12, 1.8), sketchLine(370, 296, 379, 287, 1, 2)));   // knob
+  const arm = mk('g', { class: 'arm' });
+  boilPath(arm, joinMakers(sketchCircle(352, 64, 16, 2.2), sketchCircle(352, 64, 5, 1)));            // pivot
+  boilPath(arm, joinMakers(sketchLine(352, 64, 362, 214, 3, 3), sketchLine(362, 214, 340, 246, 2, 3),
+                           sketchLine(330, 240, 346, 256, 1.5, 2), sketchLine(346, 256, 357, 247, 1.5, 2)));   // arm + head
+  svg.appendChild(arm);
+
+  // find the songs and covers
+  let files = [];
+  try {
+    const html = await (await fetch(dir)).text();
+    files = [...html.matchAll(/href="([^"?#]+)"/g)].map((m) => m[1]);
+  } catch { /* no listing */ }
+  const cds = new Map();
+  for (const f of files) {
+    const m = decodeURIComponent(f).match(/^(.*)\.([^.]+)$/);
+    if (!m) continue;
+    const [, name, ext] = m, kind = /^(mp3|m4a|wav|ogg|aac|flac)$/i.test(ext) ? 'song' : /^(jpe?g|png|webp|gif)$/i.test(ext) ? 'cover' : null;
+    if (!kind) continue;
+    if (!cds.has(name)) cds.set(name, { name });
+    cds.get(name)[kind] = dir + f;
+  }
+
+  const SIZE = 110;                                 // CD size, in stage units
+  const platterCenter = () => ({ x: PL.cx * PS, y: PLAYER_TOP + PL.cy * PS, r: (PL.r - 14) * PS });   // stage units: never changes
+  let docked = null, z = 1;
+
+  [...cds.values()].forEach((cd, i) => {
+    const el = document.createElement('div');
+    el.className = 'cd';
+    el.innerHTML = '<div class="disc"><canvas></canvas><svg viewBox="0 0 120 120"></svg></div><div class="name"></div>';
+    el.querySelector('.name').textContent = cd.name;
+    const disc = el.querySelector('.disc'), cv = disc.querySelector('canvas'), dsvg = disc.querySelector('svg');
+    dsvg.setAttribute('viewBox', '0 0 120 120');
+    boilPath(dsvg, sketchCircle(60, 60, 59, 2.4));
+    boilPath(dsvg, sketchCircle(60, 60, 11, 1.2));
+    stage.appendChild(el);
+
+    // cover, cut into a disc with a real hole in the middle
+    const dpr = Math.min(devicePixelRatio, 2);
+    cv.width = cv.height = SIZE * dpr * 2;           // room to stay sharp when it grows on the platter
+    const c = cv.getContext('2d'), R = cv.width / 2;
+    const paint = (img) => {
+      c.save(); c.beginPath(); c.arc(R, R, R, 0, Math.PI * 2); c.clip();
+      c.fillStyle = '#fff'; c.fillRect(0, 0, cv.width, cv.height);
+      if (img) {
+        const s = Math.max(cv.width / img.naturalWidth, cv.height / img.naturalHeight);
+        c.drawImage(img, R - img.naturalWidth * s / 2, R - img.naturalHeight * s / 2, img.naturalWidth * s, img.naturalHeight * s);
+      } else {                                       // no cover: a few pen rings like a bare CD
+        c.strokeStyle = 'rgba(17,17,17,.35)'; c.lineWidth = dpr;
+        for (const rr of [0.82, 0.62, 0.42]) { c.beginPath(); c.arc(R, R, R * rr, 0, Math.PI * 2); c.stroke(); }
+      }
+      c.restore();
+      c.globalCompositeOperation = 'destination-out';
+      c.beginPath(); c.arc(R, R, R * 11 / 60, 0, Math.PI * 2); c.fill();
+      c.globalCompositeOperation = 'source-over';
+    };
+    paint(null);
+    if (cd.cover) { const img = new Image(); img.src = cd.cover; img.decode().then(() => paint(img)).catch(() => {}); }
+
+    // home spot: a loose column to the right of the player
+    const st = { x: 0, y: 0, r: jit(16), s: 1 };
+    const home = () => {                             // 2 columns × 3 rows beside the player, then a loose pile
+      const col = i % 2, row = Math.floor(i / 2) % 3, layer = Math.floor(i / 6);
+      return { x: 560 + col * (SIZE + 10) + jit(8) + layer * 14, y: 10 + row * (SIZE + 38) + jit(8) + layer * 12 };
+    };
+    const place = () => {
+      el.style.transform = `translate3d(${f1(st.x)}px, ${f1(st.y)}px, 0) rotate(${f1(st.r)}deg) scale(${st.s.toFixed(3)})`;
+      el.style.setProperty('--s', st.s.toFixed(3));      // keeps the CD's outline at 2px when it grows on the platter
+    };
+    Object.assign(st, home()); place();
+    el.style.zIndex = z++;
+
+    const dock = () => {
+      if (docked && docked !== api) docked.undock(true);
+      const p = platterCenter();
+      st.s = (p.r * 2) / SIZE; st.x = p.x - SIZE / 2; st.y = p.y - SIZE / 2; st.r = 0;
+      el.classList.add('snapping', 'docked'); place();
+      setTimeout(() => el.classList.remove('snapping'), 460);
+      el.classList.add('playing'); box.classList.add('spinning');
+      docked = api;
+      if (cd.song) {
+        const homeSong = document.getElementById('song'); if (homeSong && !homeSong.paused) homeSong.pause();
+        audio.src = cd.song; audio.currentTime = 0; audio.play().catch(() => {});
+      }
+    };
+    const undock = (goHome) => {
+      el.classList.remove('playing', 'docked'); box.classList.remove('spinning');
+      audio.pause();
+      docked = null;
+      st.s = 1;
+      if (goHome) { Object.assign(st, home(), { r: jit(16) }); el.classList.add('snapping'); setTimeout(() => el.classList.remove('snapping'), 460); }
+      place();
+    };
+    const api = { undock };
+
+    let drag = null;
+    el.addEventListener('pointerdown', (e) => {
+      el.setPointerCapture(e.pointerId);
+      el.style.zIndex = 100 + z++;
+      if (docked === api) undock(false);
+      drag = { px: e.clientX, py: e.clientY };
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      st.x += (e.clientX - drag.px) / k; st.y += (e.clientY - drag.py) / k;
+      drag = { px: e.clientX, py: e.clientY };
+      place();
+    });
+    const drop = () => {
+      if (!drag) return;
+      drag = null;
+      const p = platterCenter(), cx = st.x + SIZE / 2, cy = st.y + SIZE / 2;
+      if (Math.hypot(cx - p.x, cy - p.y) < p.r) dock();
+    };
+    el.addEventListener('pointerup', drop);
+    el.addEventListener('pointercancel', drop);
+  });
+
+  // leaving this spot on the bar pauses the record; coming back picks it up again
+  new MutationObserver(() => {
+    if (!box.classList.contains('on')) audio.pause();
+    else if (docked && audio.src && audio.paused) audio.play().catch(() => {});
+  }).observe(box, { attributes: true, attributeFilter: ['class'] });
+})();
+// ---------- desk globe (bar 100) ----------
+// Spins slowly on its own; drag it to spin it yourself (it coasts, then settles back to its slow turn).
+// Drawn with the same 2px pen on a small canvas, and only while it's on screen.
+(function buildGlobe() {
+  const box = document.getElementById('globe'), cv = box.querySelector('canvas'), svg = box.querySelector('svg');
+  const c = cv.getContext('2d');
+  const W0 = 500, H0 = 560, G = { x: 250, y: 236, r: 186 }, TILT = 23.5 * Math.PI / 180;
+  const M = 80;                                     // canvas margin around the globe, room for the labels
+
+  // the stand: a half ring around the globe, the axis pins, a stem and a base
+  const ringR = G.r + 16, arc = (a0, a1, r, amp) => () => {
+    const n = 40, p = Math.random() * 6.28; let d = '';
+    for (let i = 0; i <= n; i++) {
+      const a = a0 + (a1 - a0) * i / n, rr = r + amp * Math.sin(3 * a + p) + jit(amp * 0.3);
+      // the ring follows the tilted axis
+      const x = Math.cos(a) * rr, y = Math.sin(a) * rr;
+      const X = G.x + x * Math.cos(TILT) - y * Math.sin(TILT), Y = G.y + x * Math.sin(TILT) + y * Math.cos(TILT);
+      d += (i ? ' L' : 'M') + f1(X) + ' ' + f1(Y);
+    }
+    return d;
+  };
+  boilPath(svg, arc(-Math.PI / 2 - 0.08, Math.PI / 2 + 0.08, ringR, 3.5));                 // half ring
+  const pin = (sgn) => { const x = 0, y = sgn * (G.r + 22); return [G.x + x * Math.cos(TILT) - y * Math.sin(TILT), G.y + x * Math.sin(TILT) + y * Math.cos(TILT)]; };
+  const top = pin(-1), bot = pin(1);
+  boilPath(svg, sketchCircle(top[0], top[1], 5, 1));
+  boilPath(svg, joinMakers(sketchLine(bot[0], bot[1], 250, 470, 2, 2), sketchLine(236, 470, 264, 470, 1.5, 2)));   // stem
+  boilPath(svg, joinMakers(sketchLine(250, 470, 250, 512, 1.5, 1),
+    () => { const n = 30, p = Math.random() * 6.28; let d = '';
+      for (let i = 0; i <= n + 2; i++) { const a = (i / n) * Math.PI * 2 + p; d += (i ? ' L' : 'M') + f1(250 + Math.cos(a) * (92 + jit(1.5))) + ' ' + f1(522 + Math.sin(a) * (16 + jit(0.8))); }
+      return d; }));                                                                             // base
+
+  // very rough continents (lon, lat), plus a dot for Seoul
+  const LAND = [
+    [[-168,65],[-140,70],[-100,72],[-80,63],[-60,55],[-65,45],[-80,30],[-97,18],[-105,22],[-117,32],[-125,48],[-140,60],[-168,65]],
+    [[-50,60],[-20,70],[-25,82],[-60,80],[-50,60]],
+    [[-80,10],[-60,8],[-35,-6],[-40,-22],[-58,-38],[-70,-55],[-75,-40],[-72,-18],[-81,-5],[-80,10]],
+    [[-10,36],[0,43],[-5,48],[5,54],[10,58],[20,70],[30,70],[40,64],[30,55],[40,45],[28,41],[15,40],[3,42],[-10,36]],
+    [[-17,15],[-5,35],[10,37],[32,31],[43,12],[51,11],[40,-5],[35,-25],[20,-35],[12,-17],[8,4],[-8,5],[-17,15]],
+    [[40,64],[60,70],[100,77],[140,72],[170,66],[160,58],[140,48],[130,35],[122,25],[108,18],[100,8],[95,16],[80,10],[72,20],[60,25],[50,30],[40,40],[30,55],[40,64]],
+    [[114,-22],[130,-12],[142,-11],[153,-27],[146,-39],[135,-35],[115,-34],[114,-22]],
+    [[130,31],[136,34],[141,41],[142,45],[139,38],[132,33],[130,31]],
+    [[-24,64],[-22,66.5],[-15,66.5],[-13,65],[-18,63.4],[-24,64]],                         // Iceland
+    [[7,44],[13,46],[13.5,44],[16,41.5],[18.5,40],[16,38],[15.6,40],[12,42],[10,44],[7,44]],  // Italy
+  ];
+  // places I've been / care about: [lon, lat, label, label offset (px)]
+  const PLACES = [
+    [-98, 39, 'USA', [10, 4]],
+    [8.2, 46.8, 'Switzerland', [-12, -10]],
+    [-19, 65, 'Iceland', [-10, -10]],
+    [12.5, 42.5, 'Italy', [10, 14]],
+  ];
+  const SEOUL = [127, 37.5];
+  // densify edges so they curve nicely on the sphere, and give each point a fixed little wobble
+  const dense = LAND.map((poly) => {
+    const out = [];
+    for (let i = 0; i < poly.length - 1; i++) {
+      const [a, b] = [poly[i], poly[i + 1]], n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 3));
+      for (let t = 0; t < n; t++) out.push([a[0] + (b[0] - a[0]) * t / n + jit(3), a[1] + (b[1] - a[1]) * t / n + jit(3)]);
+    }
+    out.push(out[0]);
+    return out;
+  });
+  const lines = [];                                   // graticule: meridians every 30°, a few parallels
+  for (let lon = -180; lon < 180; lon += 30) { const l = []; for (let lat = -90; lat <= 90; lat += 5) l.push([lon, lat]); lines.push(l); }
+  for (const lat of [-60, -30, 0, 30, 60]) { const l = []; for (let lon = -180; lon <= 180; lon += 5) l.push([lon, lat]); lines.push(l); }
+
+  let k = 1, dpr = 1, ox = 0, oy = 0;
+  const fit = () => {
+    const b = box.getBoundingClientRect(); if (!b.width || !b.height) return;
+    k = Math.min(b.width / W0, b.height / H0); dpr = Math.min(devicePixelRatio, 2);
+    ox = (b.width - W0 * k) / 2; oy = (b.height - H0 * k) / 2;
+    const size = (G.r + M) * 2 * k;
+    cv.style.left = f1(ox + (G.x - G.r - M) * k) + 'px'; cv.style.top = f1(oy + (G.y - G.r - M) * k) + 'px';
+    cv.style.width = cv.style.height = f1(size) + 'px';
+    cv.width = cv.height = Math.round(size * dpr);
+    dirty = true;
+  };
+
+  let rot = -127, spin = 0, dirty = true, lastBoil = -1;          // start with Korea facing us
+  const project = (lon, lat) => {
+    const L = (lon + rot) * Math.PI / 180, P = lat * Math.PI / 180;
+    const x = Math.cos(P) * Math.sin(L), y = -Math.sin(P), z = Math.cos(P) * Math.cos(L);
+    return [x * Math.cos(TILT) - y * Math.sin(TILT), x * Math.sin(TILT) + y * Math.cos(TILT), z];
+  };
+  function strokeOnSphere(pts, wob) {
+    let drawing = false;
+    c.beginPath();
+    for (const [lon, lat] of pts) {
+      const [x, y, z] = project(lon, lat);
+      if (z < 0) { drawing = false; continue; }      // back side: hidden
+      const X = x * G.r + jit(wob ? 1.4 : 0.8), Y = y * G.r + jit(wob ? 1.4 : 0.8);
+      drawing ? c.lineTo(X, Y) : c.moveTo(X, Y);
+      drawing = true;
+    }
+    c.stroke();
+  }
+  function draw() {
+    const s = k * dpr, R = G.r;
+    c.setTransform(s, 0, 0, s, (G.r + M) * s, (G.r + M) * s);
+    c.clearRect(-R - M, -R - M, (R + M) * 2, (R + M) * 2);
+    c.lineCap = 'round'; c.lineJoin = 'round'; c.strokeStyle = '#111';
+    c.fillStyle = '#fff'; c.beginPath(); c.arc(0, 0, R, 0, Math.PI * 2); c.fill();
+    c.lineWidth = 1 / k; c.globalAlpha = 0.3;                       // faint grid
+    for (const l of lines) strokeOnSphere(l, false);
+    c.globalAlpha = 1; c.lineWidth = 2 / k;                         // the pen: 2px on screen
+    for (const poly of dense) strokeOnSphere(poly, true);
+    const [sx, sy, sz] = project(...SEOUL);
+    c.fillStyle = '#111';
+    if (sz > 0) { c.beginPath(); c.arc(sx * R, sy * R, 3.2 / k, 0, Math.PI * 2); c.fill(); }
+    c.font = `${(17 / k).toFixed(2)}px 'Shadows Into Light', cursive`;
+    for (const [lon, lat, label, [dx, dy]] of PLACES) {
+      const [px, py, pz] = project(lon, lat);
+      if (pz < 0.08) continue;                                      // hidden behind (or right at the edge)
+      c.globalAlpha = Math.min(1, pz * 4);
+      const X = px * R, Y = py * R;
+      c.beginPath(); c.arc(X, Y, 3.4 / k, 0, Math.PI * 2); c.fill();
+      c.lineWidth = 1.4 / k;                                        // a little circle drawn around the dot
+      c.beginPath(); for (let i = 0; i <= 14; i++) { const a = i / 12 * Math.PI * 2; c.lineTo(X + Math.cos(a) * (8 + jit(1.2)) / k, Y + Math.sin(a) * (8 + jit(1.2)) / k); } c.stroke();
+      c.textAlign = dx < 0 ? 'right' : 'left';
+      c.fillText(label, X + dx / k, Y + dy / k);
+    }
+    c.globalAlpha = 1; c.lineWidth = 2 / k;
+    c.beginPath();                                                   // outline, drawn in one loop
+    for (let i = 0; i <= 68; i++) { const a = (i / 60) * Math.PI * 2 + 0.4, rr = R + Math.sin(3 * a + 1) * 3 + Math.sin(5 * a + 2) * 1.6 + (i / 60 - 0.5) * 4 + jit(0.9);
+      i ? c.lineTo(Math.cos(a) * rr, Math.sin(a) * rr) : c.moveTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+    c.stroke();
+  }
+
+  // drag to spin
+  let drag = null;
+  cv.addEventListener('pointerdown', (e) => { cv.setPointerCapture(e.pointerId); drag = { x: e.clientX, t: performance.now() }; spin = 0; });
+  cv.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    const now = performance.now(), dx = e.clientX - drag.x;
+    const deg = dx / (G.r * k) * 57.3;                             // feels like rolling the surface
+    rot += deg; spin = deg / Math.max(8, now - drag.t) * 16;
+    drag = { x: e.clientX, t: now }; dirty = true;
+  });
+  const drop = () => { drag = null; };
+  cv.addEventListener('pointerup', drop); cv.addEventListener('pointercancel', drop);
+
+  const AUTO = 0.12;                                               // slow turn, degrees per frame
+  function loop() {
+    requestAnimationFrame(loop);
+    if (!box.classList.contains('on') || !document.body.classList.contains('met')) return;   // off screen: do nothing
+    if (!drag) { spin += (AUTO - spin) * 0.03; rot += spin; dirty = true; }
+    if (boil !== lastBoil) { lastBoil = boil; dirty = true; }
+    if (dirty) { dirty = false; draw(); }
+  }
+  new ResizeObserver(fit).observe(box);
+  fit();
+  requestAnimationFrame(loop);
+})();
+momentsReady = true;
+alignBar();
+
+// ---------- life album ----------
+// One folder per age in photos/life/: 1_baby, 2_kid, 3_student, 4_now (as many photos as you like, in file-name order).
+// Each age owns a stretch of the bar; its photos are spread across it. At the very top: the drawn family portrait.
+// Every photo is a card in its own proportions, with a wobbly pen outline that boils (pre-drawn frames, no filter).
+const album = document.getElementById('album'), albumCards = document.getElementById('albumCards');
+const albumWhen = document.getElementById('albumWhen');
+const AGES = [
+  { dir: '1_baby/',    at: 0,  word: 'baby' },
+  { dir: '2_kid/',     at: 25, word: 'kid' },
+  { dir: '3_student/', at: 50, word: 'student' },
+  { dir: '4_now/',     at: 75, word: 'now' },
+];
+const FAMILY_AT = 91;
+const cards = [];                                // { el, at, ar, draw(w, h) }
+
+function wordFor(v) {
+  if (v >= FAMILY_AT - 3) return 'someday';
+  let best = AGES[0];
+  for (const a of AGES) if (Math.abs(a.at - v) < Math.abs(best.at - v)) best = a;
+  return best.word;
+}
+const albumEmpty = document.getElementById('albumEmpty');
+// the photo area spans exactly from the top of the bar to its bottom; the age word sits just under it
+fitAlbumToBar = (top, bottom) => {
+  const a = album.getBoundingClientRect();
+  albumCards.style.top = f1(top - a.top) + 'px';
+  albumCards.style.height = f1(Math.max(60, bottom - top)) + 'px';
+  albumWhen.style.top = f1(bottom - a.top + 14) + 'px';
+  layoutCards();
+};
+function updateAlbum(v) {
+  // the nearest age that has something; all of its cards show together
+  let best = null;
+  for (const c of cards) if (best === null || Math.abs(c.at - v) < Math.abs(best - v)) best = c.at;
+  if (best !== null && Math.abs(best - v) > 13) best = null;    // nothing for this age (yet)
+  for (const c of cards) c.el.classList.toggle('on', c.at === best);
+  const word = wordFor(v);
+  const shownStrip = best !== null && cards.some((c) => c.at === best && c.el.classList.contains('strip'));
+  albumWhen.textContent = shownStrip ? '' : word;      // a strip already says it at its foot
+  const age = AGES.find((a) => a.word === word);
+  albumEmpty.innerHTML = age ? `add photos to<br/>photos/life/${age.dir}` : '';
+  albumEmpty.style.display = best ? 'none' : '';
+}
+
+// a sketchy outline for a card: bumpy sides overshooting the corners; 4 versions that differ a hair
+function cardOutline(svg) {
+  const sides = [[0, 0, 100, 0], [100, 0, 100, 100], [100, 100, 0, 100], [0, 100, 0, 0]].map(([x1, y1, x2, y2]) => {
+    const n = 4, len = Math.hypot(x2 - x1, y2 - y1), ux = (x2 - x1) / len, uy = (y2 - y1) / len, over = 2 + Math.random() * 3;
+    const bumps = Array.from({ length: n + 1 }, (_, k) => (k === 0 || k === n ? 0.8 : 2.6) * (Math.random() - 0.5) * 2);
+    return { x1: x1 - ux * over, y1: y1 - uy * over, x2: x2 + ux * over * Math.random(), y2: y2 + uy * over * Math.random(), ux, uy, n, bumps };
+  });
+  boilPath(svg, () => sides.map(({ x1, y1, x2, y2, ux, uy, n, bumps }) => {
+    const pt = (k) => { const t = k / n, b = bumps[k] + (Math.random() - 0.5) * 0.9; return [x1 + (x2 - x1) * t - uy * b, y1 + (y2 - y1) * t + ux * b]; };
+    let d = `M${f1(pt(0)[0])} ${f1(pt(0)[1])}`;
+    for (let k = 1; k <= n; k++) { const a = pt(k - 1), b = pt(k); d += ` Q${f1(a[0])} ${f1(a[1])} ${f1((a[0] + b[0]) / 2)} ${f1((a[1] + b[1]) / 2)}`; }
+    const e = pt(n); return d + ` L${f1(e[0])} ${f1(e[1])}`;
+  }).join(' '));
+}
+function makeCard(at, ar, fill) {
+  const el = document.createElement('div');
+  el.className = 'card';
+  const svg = mk('svg', { class: 'edge', viewBox: '0 0 100 100', preserveAspectRatio: 'none' });
+  el.appendChild(svg); cardOutline(svg);
+  albumCards.appendChild(el);
+  // its own random toss, kept for good so resizing doesn't reshuffle: tilt, size, nudge, stacking
+  const card = { el, at, ar, fill, rot: (Math.random() - 0.5) * 16, size: 0.82 + Math.random() * 0.22,
+                 jx: Math.random() - 0.5, jy: Math.random() - 0.5, z: Math.floor(Math.random() * 50) };
+  el.style.zIndex = card.z;
+  cards.push(card);
+  return card;
+}
+// size every card to fit the area while keeping its own ratio
+// lay each age's cards out as a loose, overlapping pile: a rough grid, then every card nudged,
+// tilted and resized a bit at random so it looks tossed on a table rather than lined up
+function layoutCards() {
+  const b = albumCards.getBoundingClientRect();
+  if (!b.width || !b.height) return;
+  for (const c of cards) {
+    const strip = c.el.classList.contains('strip'), pad = strip ? 0 : c.el.classList.contains('framed') ? 60 : 24;
+    const maxH = (strip ? b.height * 0.92 : b.height * 0.61) - pad, maxW = b.width - pad;   // a touch smaller than the bar
+    const w = Math.min(maxW, maxH * c.ar), h = w / c.ar;
+    c.fill(Math.round(w), Math.round(h));
+    c.el.style.left = f1(b.width / 2) + 'px'; c.el.style.top = f1(b.height / 2) + 'px';
+    c.el.style.transform = 'translate(-50%, -50%)';
+  }
+}
+new ResizeObserver(() => layoutCards()).observe(albumCards);
+
+async function listDir(dir) {
+  try {
+    const html = await (await fetch(dir)).text();
+    return [...html.matchAll(/href="([^"?#]+\.(?:jpe?g|png|webp))"/gi)].map((m) => m[1])
+      .sort((a, b) => decodeURIComponent(a).localeCompare(decodeURIComponent(b), undefined, { numeric: true }));
+  } catch { return []; }
+}
+// Photo-booth strip: SLOTS stacked slots + the age (baby / kid / …) written at the bottom, drawn with the pen.
+// Proportions are fixed (STRIP_*), so the outline is drawn once and the photos are cropped into the slots.
+const SLOTS = 2;
+const STRIP_W = 100, STRIP_PAD = 7, STRIP_GAP = 5, SLOT_H = 64.5, STRIP_FOOT = 22;
+const STRIP_H = STRIP_PAD * 2 + SLOT_H * SLOTS + STRIP_GAP * (SLOTS - 1) + STRIP_FOOT;
+const slotY = (i) => STRIP_PAD + i * (SLOT_H + STRIP_GAP);
+// a big look at the real photo: click a slot → it opens in colour, with the same pen frame
+const lightbox = document.createElement('div');
+lightbox.className = 'lightbox';
+lightbox.innerHTML = '<div class="lb-card"><img alt="" /></div>';
+document.body.appendChild(lightbox);
+const lbCard = lightbox.querySelector('.lb-card'), lbImg = lightbox.querySelector('img');
+{ const svg = mk('svg', { class: 'edge', viewBox: '0 0 100 100', preserveAspectRatio: 'none' }); lbCard.appendChild(svg); cardOutline(svg); }
+function openPhoto(src) { lbImg.src = src; document.body.classList.add('lb-open'); }
+function closePhoto() { document.body.classList.remove('lb-open'); }
+lightbox.addEventListener('click', closePhoto);
+addEventListener('keydown', (e) => { if (e.key === 'Escape') closePhoto(); });
+
+function makeStrip(at, imgs, word) {
+  const cv = document.createElement('canvas');
+  const card = makeCard(at, STRIP_W / STRIP_H, (w, h) => {
+    cv.style.width = w + 'px'; cv.style.height = h + 'px';
+    const dpr = Math.min(devicePixelRatio, 2), k = (w * dpr) / STRIP_W;
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    const c = cv.getContext('2d'); c.imageSmoothingQuality = 'high';
+    imgs.slice(0, SLOTS).forEach((img, i) => {
+      if (!img.naturalWidth) return;
+      const sx = STRIP_PAD * k, sy = slotY(i) * k, sw = (STRIP_W - STRIP_PAD * 2) * k, sh = SLOT_H * k;
+      const sc = Math.max(sw / img.naturalWidth, sh / img.naturalHeight);       // cover-crop into the slot
+      c.save(); c.beginPath(); c.rect(sx, sy, sw, sh); c.clip();
+      c.drawImage(img, sx + (sw - img.naturalWidth * sc) / 2, sy + (sh - img.naturalHeight * sc) / 2, img.naturalWidth * sc, img.naturalHeight * sc);
+      c.restore();
+    });
+  });
+  card.el.classList.add('strip');
+  card.el.prepend(cv);
+  // click a slot → see the real photo, big
+  card.el.addEventListener('click', (e) => {
+    const r = cv.getBoundingClientRect(), y = (e.clientY - r.top) / r.height * STRIP_H;
+    const i = [...Array(SLOTS).keys()].find((j) => y >= slotY(j) && y <= slotY(j) + SLOT_H);
+    if (i !== undefined && imgs[i] && imgs[i].naturalWidth) openPhoto(imgs[i].src);
+  });
+  // the slots, outlined with the same sketchy pen, and a signature at the foot
+  const marks = mk('svg', { class: 'edge slots', viewBox: `0 0 ${STRIP_W} ${f1(STRIP_H)}`, preserveAspectRatio: 'none' });
+  for (let i = 0; i < SLOTS; i++) {
+    const x0 = STRIP_PAD, y0 = slotY(i), x1 = STRIP_W - STRIP_PAD, y1 = y0 + SLOT_H;
+    boilPath(marks, joinMakers(sketchLine(x0, y0, x1, y0, 0.7, 1.5), sketchLine(x1, y0, x1, y1, 0.7, 1.5), sketchLine(x1, y1, x0, y1, 0.7, 1.5), sketchLine(x0, y1, x0, y0, 0.7, 1.5)));
+  }
+  const sig = mk('text', { x: STRIP_W / 2, y: STRIP_H - STRIP_FOOT * 0.38, 'text-anchor': 'middle' });
+  sig.textContent = word;
+  marks.appendChild(sig);
+  card.el.appendChild(marks);
+  return card;
+}
+(async function loadAlbum() {
+  const root = album.dataset.dir;
+  for (const age of AGES) {
+    const files = await listDir(root + age.dir);
+    if (!files.length) continue;
+    const imgs = files.slice(0, SLOTS).map((f) => { const img = new Image(); img.src = root + age.dir + f; img.decoding = 'async'; return img; });
+    makeStrip(age.at, imgs, age.word);
+    Promise.allSettled(imgs.map((img) => img.decode())).then(() => layoutCards());   // redraw once the photos are in
+    const dot = mk('circle', { r: 3.2, style: 'fill:#111' }); sliderSvg.insertBefore(dot, knob); albumDots.push({ c: dot, at: age.at });
+  }
+  if (albumDots.length) album.classList.add('has-photos');
+  alignBar();                                       // also fits the album to the bar
+  layoutCards();
+  updateAlbum(age * 100);
+})();
+
+// the family portrait (grandpa me, my son, my daughter) in the same pen as everything else
+(function drawFamily() {
+  // someday: a framed picture of my family laughing — me (glasses), my wife, our daughter and son.
+  // Same pen and head style as everything else; the whole drawing boils like the person on the bar.
+  const svg = mk('svg', { class: 'family', viewBox: '66 40 254 266', 'aria-label': 'a framed drawing of my future family laughing together' });
+  const card = makeCard(100, 254 / 266, (w, h) => { svg.setAttribute('width', w); svg.setAttribute('height', h); });
+  card.el.prepend(svg);
+  // a picture frame: a second pen border inside the first
+  card.el.classList.add('framed');
+  const inner = mk('svg', { class: 'edge inner', viewBox: '0 0 100 100', preserveAspectRatio: 'none' });
+  card.el.appendChild(inner); cardOutline(inner);
+
+  const SMILE_EYES = ['M89 153 C 92 145, 101 145, 104 153', 'M138 153 C 141 145, 150 145, 153 153'];
+  const LAUGH = 'M105 189 C 112 205, 130 205, 137 189 C 127 192, 115 192, 105 189 Z';
+  const NECK = HOME.neck.slice(0, 2), KID_NECK = ['M106 212 C 106 228, 106 238, 105 246', 'M136 212 C 136 228, 136 238, 137 246'];
+  const KID_FACE = 'M66 142 C 64 180, 86 214, 121 216 C 156 214, 178 180, 176 142';
+  const LONG_HAIR = (end) => ['M58 150 C 44 96, 70 42, 121 38 C 172 42, 198 96, 184 150 C 188 ' + (end - 40) + ', 190 ' + (end - 20) + ', 194 ' + end,
+                              'M58 150 C 54 ' + (end - 40) + ', 52 ' + (end - 20) + ', 48 ' + end,
+                              'M121 46 C 98 66, 78 98, 70 132', 'M121 46 C 144 66, 166 98, 173 130'];
+  const ME = [HOME.hair, HOME.bangs, ...HOME.strands, HOME.face, ...HOME.ears, ...HOME.glasses, ...SMILE_EYES, HOME.nose, LAUGH, ...NECK];
+  const WIFE = [...LONG_HAIR(262), 'M70 142 C 70 175, 84 206, 104 220 C 113 226, 129 226, 138 220 C 158 206, 172 175, 172 142',
+                ...SMILE_EYES, 'M121 166 C 119 172, 121 176, 124 175', LAUGH, ...NECK];
+  const GIRL = [...LONG_HAIR(232), KID_FACE, ...SMILE_EYES, 'M121 166 C 119 173, 121 177, 125 176', LAUGH, ...KID_NECK];
+  const BOY = [HOME.hair, HOME.bangs, ...HOME.strands, KID_FACE, ...HOME.ears, ...SMILE_EYES, 'M121 166 C 119 173, 121 177, 125 176', LAUGH, ...KID_NECK];
+
+  const head = (paths, x, y, sc, tilt) => {
+    const g = mk('g', { transform: `translate(${x} ${y}) rotate(${tilt}) scale(${sc}) translate(-121 -246)` });
+    // white behind the head and hair, so nothing behind shows through
+    g.appendChild(mk('path', { d: 'M52 150 C 40 36, 202 36, 190 150 C 194 200, 196 230, 194 240 L 48 240 C 46 230, 48 200, 52 150 Z', style: 'fill:#fff;stroke:none' }));
+    paths.forEach((d) => g.appendChild(mk('path', { d })));
+    svg.appendChild(g);
+  };
+
+  // just our faces, close together in the middle of the frame:
+  // back row my wife and me, in front our daughter and son
+  head(WIFE, 150, 178, 0.6, 6);
+  head(ME, 252, 182, 0.62, -6);
+  head(GIRL, 132, 288, 0.5, 8);
+  head(BOY, 236, 292, 0.5, -8);
+})();
+
+function setAge(a) {
+  age = Math.max(0, Math.min(1, a));
+  if (pending) return;                      // at most one redraw per frame
+  pending = true;
+  requestAnimationFrame(() => {
+    pending = false;
+    knob.setAttribute('cy', BAR.bottom - (BAR.bottom - BAR.top) * age);
+    slider.setAttribute('aria-valuenow', Math.round(age * 100));
+    updateMoments(age * 100);
+    updateAlbum(age * 100);
+    slider.setAttribute('aria-valuetext', STAGES[Math.round(age * (STAGES.length - 1))]);
+    drawPerson(settled(age), me, personOpts());
+  });
+}
+// hover over the person: he smiles and waves (eases in/out; only animates while it matters)
+let personHover = false, waveK = 0, waveRaf = 0;
+const personOpts = () => (waveK > 0.001 || personHover ? { wave: waveK, t: performance.now() / 1000, smile: personHover } : {});
+function waveTick() {
+  waveK += ((personHover ? 1 : 0) - waveK) * 0.16;
+  if (!personHover && waveK < 0.01) waveK = 0;
+  drawPerson(settled(age), me, personOpts());
+  waveRaf = personHover || waveK > 0 ? requestAnimationFrame(waveTick) : 0;
+}
+const personBox = document.querySelector('.person');
+personBox.addEventListener('pointerenter', () => { personHover = true; if (!waveRaf) waveRaf = requestAnimationFrame(waveTick); });
+personBox.addEventListener('pointerleave', () => { personHover = false; if (!waveRaf) waveRaf = requestAnimationFrame(waveTick); });
+
+// the person holds each stage's look near it (so resting on any photo never shows two faces at once),
+// and only morphs in the gaps between stages
+function settled(a) {
+  const v = a * 100, C = [0, 25, 50, 75, 100], HOLD = 9.5;
+  for (let i = 0; i < C.length; i++) if (Math.abs(v - C[i]) <= HOLD) return C[i] / 100;
+  for (let i = 0; i < C.length - 1; i++) {
+    const s0 = C[i] + HOLD, s1 = C[i + 1] - HOLD;
+    if (v > s0 && v < s1) { const t = (v - s0) / (s1 - s0); return (C[i] + (C[i + 1] - C[i]) * t) / 100; }
+  }
+  return a;
+}
+function ageFromPointer(e) {
+  const box = sliderSvg.getBoundingClientRect();
+  const y = (e.clientY - box.top) / box.height * 440;      // into viewBox units
+  return (BAR.bottom - y) / (BAR.bottom - BAR.top);
+}
+// smooth while dragging; when you let go it glides to the nearest stage, so it never rests half-way
+let dragging = false, glide = 0;
+const STEP = 1 / (STAGES.length - 1);
+function glideTo(target) {
+  cancelAnimationFrame(glide);
+  target = Math.max(0, Math.min(1, target));
+  const from = age, t0 = performance.now(), dur = 380;
+  const tick = (now) => {
+    const t = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - t, 3);
+    setAge(from + (target - from) * e);
+    if (t < 1) glide = requestAnimationFrame(tick);
+  };
+  glide = requestAnimationFrame(tick);
+}
+const snapPoints = () => [...STAGES.map((_, i) => i * STEP), ...moments.map((m) => m.at / 100), ...albumDots.map((d) => d.at / 100)];
+const settle = () => glideTo(snapPoints().reduce((best, p) => (Math.abs(p - age) < Math.abs(best - age) ? p : best), 0));
+slider.addEventListener('pointerdown', (e) => { cancelAnimationFrame(glide); dragging = true; slider.setPointerCapture(e.pointerId); setAge(ageFromPointer(e)); });
+slider.addEventListener('pointermove', (e) => { if (dragging) setAge(ageFromPointer(e)); });
+slider.addEventListener('pointerup', () => { if (dragging) { dragging = false; settle(); } });
+slider.addEventListener('pointercancel', () => { if (dragging) { dragging = false; settle(); } });
+slider.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowUp') { glideTo(Math.round(age / STEP) * STEP + STEP); e.preventDefault(); }
+  if (e.key === 'ArrowDown') { glideTo(Math.round(age / STEP) * STEP - STEP); e.preventDefault(); }
+});
+setAge(age);
+window.resetLife = () => { cancelAnimationFrame(glide); dragging = false; setAge(0); };
+
+
+// ---------- personality: the round thing ----------
+// Breathes slowly; poke it (hover in, click, tap) and spikes shoot out with a little overshoot, then
+// melt back. Each poke it either plays (wink + tongue) or gets grumpy (brows + wobbly mouth).
+(function critter() {
+  const body = document.getElementById('critterBody'), face = document.getElementById('critterFace');
+  const el = document.getElementById('critter');
+  const C = 200, R = 118, N = 15, W = 0.17;               // centre, radius, number of spikes, spike width (rad)
+  const spikePhase = Math.random() * 6.28, spikeLen = Array.from({ length: N }, () => 0.7 + Math.random() * 0.5);
+  // its own lumpy shape (fixed), like it was drawn freehand
+  const lumps = [2, 3, 4, 6, 9].map((f, i) => ({ f, amp: [7, 6, 4, 2.4, 1.4][i] * (0.7 + Math.random() * 0.6), p: Math.random() * 6.28 }));
+  const start = Math.random() * 6.28;
+  let S = 0, V = 0, target = 0, until = 0, mood = 'calm', squish = 0, lastPoke = 0, playfulNext = true, lastBoilFace = -1;
+  const facePaths = {
+    calm: ['M168 186 m-5 0 a5 5 0 1 0 10 0 a5 5 0 1 0 -10 0', 'M232 186 m-5 0 a5 5 0 1 0 10 0 a5 5 0 1 0 -10 0',
+           'M182 218 C 192 230, 208 230, 218 218'],
+    playful: ['M160 188 C 164 180, 172 180, 176 188', 'M232 186 m-5 0 a5 5 0 1 0 10 0 a5 5 0 1 0 -10 0',
+              'M178 214 C 190 232, 210 232, 222 214 Z', 'M196 226 C 196 242, 212 242, 212 228'],
+    grumpy: ['M154 170 L 178 178', 'M246 170 L 222 178',
+             'M168 190 m-4.5 0 a4.5 4.5 0 1 0 9 0 a4.5 4.5 0 1 0 -9 0', 'M232 190 m-4.5 0 a4.5 4.5 0 1 0 9 0 a4.5 4.5 0 1 0 -9 0',
+             'M180 226 C 188 220, 194 232, 200 226 C 206 220, 212 232, 220 226'],
+  };
+  function setFace(m) {
+    if (m === mood && face.childNodes.length) return;
+    mood = m; face.innerHTML = '';
+    facePaths[m].forEach((d) => face.appendChild(mk('path', { d })));
+  }
+  setFace('calm');
+  function poke() {
+    const now = performance.now();
+    if (now - lastPoke < 250) return;                     // one poke at a time
+    lastPoke = now;
+    target = 1; until = now + 650; V += 0.35; squish = 1;
+    setFace(playfulNext ? 'playful' : 'grumpy');
+    playfulNext = Math.random() < 0.6 ? !playfulNext : playfulNext;   // mostly alternates, sometimes repeats
+  }
+  el.addEventListener('pointerenter', poke);
+  el.addEventListener('pointerdown', poke);
+
+  function draw(t) {
+    const pts = [], n = 480, bj = boil;                   // enough points for sharp spike tips; boil index wobbles the outline
+    for (let i = 0; i < n; i++) {
+      const a = start + (i / n) * Math.PI * 2;
+      let r = R + 4 * Math.sin(3 * a + t * 0.8) + 3 * Math.sin(5 * a - t * 1.1)
+            + lumps.reduce((acc, l) => acc + l.amp * Math.sin(l.f * a + l.p), 0)
+            + Math.sin(7 * a + bj * 1.7) * 1.6 + Math.sin(11 * a + bj * 2.3) * 0.9;
+      // spikes: a sharp triangle around each spike angle
+      const k = Math.round((a - spikePhase) / (Math.PI * 2 / N)), d = a - spikePhase - k * (Math.PI * 2 / N);
+      const tip = Math.max(0, 1 - Math.abs(d) / W);
+      r += S * 62 * spikeLen[((k % N) + N) % N] * tip * tip;
+      const sy = 1 - squish * 0.08, sx = 1 + squish * 0.05;  // a little squash when poked
+      pts.push([C + Math.cos(a) * r * sx, C + 8 + Math.sin(a) * r * sy]);
+    }
+    body.setAttribute('d', 'M' + pts.map((p) => f1(p[0]) + ' ' + f1(p[1])).join(' L') + ' Z');   // one clean closed line
+  }
+  function loop(now) {
+    requestAnimationFrame(loop);
+    if (!document.body.classList.contains('traits-on')) return;      // only while the page is up
+    if (now > until) target = 0;
+    V += (target - S) * 0.28; V *= 0.68; S += V; S = Math.max(-0.08, S);   // springy, with overshoot
+    squish *= 0.88;
+    if (boil !== lastBoilFace) { lastBoilFace = boil; face.setAttribute('transform', `translate(${f1(jit(1.6))} ${f1(jit(1.6))})`); }   // the face boils too
+    if (S < 0.02 && target === 0 && mood !== 'calm' && now > until + 500) setFace('calm');
+    draw(now / 1000);
+  }
+  requestAnimationFrame(loop);
+})();
+
+// ---------- passion: the campfire ----------
+// Flames are a few tongues whose height/sway flicker with layered sines; sparks rise more the hotter it is.
+// Drag a log from the pile onto the fire: it drops in, the fire flares up, then slowly settles back.
+(function campfire() {
+  const svg = document.getElementById('fire');
+  const gLogs = document.getElementById('fireLogs'), gFlames = document.getElementById('flames');
+  const gSparks = document.getElementById('sparks'), gPile = document.getElementById('woodPile'), gCarry = document.getElementById('carry');
+  const FX = 250, FY = 420;                                        // centre of the fire's base
+  const BASE = 0.85, MAX = 2.0;
+  let heat = BASE, fuel = BASE, flare = 0, burning = 3;            // fuel: where the fire is heading; heat eases after it
+
+  // a log: a rounded body with a ring at its near end, drawn with the same sketchy pen
+  function logShape(cx, cy, len, th, ang) {
+    const c = Math.cos(ang), s = Math.sin(ang), hx = c * len / 2, hy = s * len / 2, nx = -s * th / 2, ny = c * th / 2;
+    const P = (x, y) => f1(x) + ' ' + f1(y);
+    const a = [cx - hx + nx, cy - hy + ny], b = [cx + hx + nx, cy + hy + ny], d = [cx + hx - nx, cy + hy - ny], e = [cx - hx - nx, cy - hy - ny];
+    const g = mk('g');
+    g.appendChild(mk('path', { class: 'solid', d: `M${P(...a)} L${P(...b)} Q${P(b[0] + c * th * 0.6, b[1] + s * th * 0.6)} ${P(...d)} L${P(...e)} Z` }));
+    g.appendChild(mk('ellipse', { class: 'solid', cx: f1(cx - hx), cy: f1(cy - hy), rx: f1(th * 0.32), ry: f1(th / 2), transform: `rotate(${f1(ang * 57.3)} ${f1(cx - hx)} ${f1(cy - hy)})` }));
+    g.appendChild(mk('ellipse', { cx: f1(cx - hx), cy: f1(cy - hy), rx: f1(th * 0.13), ry: f1(th * 0.2), transform: `rotate(${f1(ang * 57.3)} ${f1(cx - hx)} ${f1(cy - hy)})` }));
+    g.appendChild(mk('path', { d: `M${P(cx - hx * 0.3 + nx * 0.3, cy - hy * 0.3 + ny * 0.3)} L${P(cx + hx * 0.4 + nx * 0.3, cy + hy * 0.4 + ny * 0.3)}` }));   // bark line
+    return g;
+  }
+  // logs in the fire, crossed like a little teepee base
+  const FIRE_LOGS = [[-34, 8, 150, 26, -0.32], [36, 8, 150, 26, 3.46], [0, 18, 160, 28, 0.06], [-60, 20, 120, 22, -0.1], [60, 20, 120, 22, 3.24], [-10, 0, 130, 24, -0.6], [14, 0, 130, 24, 3.75]];
+  function drawFireLogs() {
+    gLogs.innerHTML = '';
+    FIRE_LOGS.slice(0, burning).forEach(([dx, dy, l, t, a]) => gLogs.appendChild(logShape(FX + dx, FY + dy, l, t, a)));
+  }
+  drawFireLogs();
+  // a little stone ring
+  for (let i = 0; i < 9; i++) {
+    gLogs.insertBefore(mk('ellipse', { class: 'solid', cx: f1(FX - 120 + i * 30), cy: f1(FY + 34 + Math.sin(i * 1.3) * 3), rx: 17, ry: 10 }), gLogs.firstChild);
+  }
+
+  // the pile to take logs from
+  const PILE = [[470, 452, 140, 26, 0.02], [492, 428, 130, 24, -0.04], [478, 404, 130, 24, 0.05], [500, 380, 118, 22, -0.02]];
+  PILE.forEach((l) => gPile.appendChild(logShape(...l)));
+
+  // flames: tongues (offset, width, height share, phase); drawn back to front with a white fill
+  // phases spread around the circle so neighbouring tongues lean opposite ways and the fire stays upright
+  const TONGUES = [[-46, 70, 0.62, 0.0], [44, 66, 0.68, 3.1], [-16, 96, 0.9, 1.6], [18, 84, 1.0, 4.7], [0, 60, 0.58, 2.4]];
+  const flamePaths = TONGUES.map(() => { const p = mk('path', { style: 'fill:url(#flameFill)' }); gFlames.appendChild(p); return p; });
+  const inner = mk('path', { style: 'fill:#ffb878;fill-opacity:.55' }); gFlames.appendChild(inner);
+  const glow = document.getElementById('glow');
+  // one flame tongue: wide belly, a pinched waist, a tip that bends and licks sideways (smooth through the points)
+  function tongue(cx, w, h, t, ph) {
+    const sway = Math.sin(t * 2.6 + ph) * w * 0.16 + Math.sin(t * 6.1 + ph * 2) * w * 0.06;   // around upright, never a steady lean
+    const hh = h * (1 + Math.sin(t * 7.3 + ph) * 0.08 + Math.sin(t * 12.7 + ph * 1.7) * 0.05);
+    const lick = Math.sin(t * 4.3 + ph * 1.3) * w * 0.12;
+    const pts = [
+      [cx - w / 2, FY],
+      [cx - w * 0.62, FY - hh * 0.26],
+      [cx - w * 0.2 + sway * 0.35 + lick, FY - hh * 0.58],
+      [cx - w * 0.06 + sway * 0.8, FY - hh * 0.84],
+      [cx + sway * 1.1, FY - hh],                             // tip
+      [cx + w * 0.16 + sway * 0.7, FY - hh * 0.74],
+      [cx + w * 0.26 + sway * 0.3 - lick, FY - hh * 0.5],
+      [cx + w * 0.6, FY - hh * 0.22],
+      [cx + w / 2, FY],
+    ];
+    // Catmull-Rom → cubic Béziers, so it's one soft line
+    let d = `M${f1(pts[0][0])} ${f1(pts[0][1])}`;
+    for (let k = 0; k < pts.length - 1; k++) {
+      const p0 = pts[Math.max(0, k - 1)], p1 = pts[k], p2 = pts[k + 1], p3 = pts[Math.min(pts.length - 1, k + 2)];
+      d += ` C ${f1(p1[0] + (p2[0] - p0[0]) / 6)} ${f1(p1[1] + (p2[1] - p0[1]) / 6)}, ${f1(p2[0] - (p3[0] - p1[0]) / 6)} ${f1(p2[1] - (p3[1] - p1[1]) / 6)}, ${f1(p2[0])} ${f1(p2[1])}`;
+    }
+    return d + ' Z';
+  }
+
+
+  // sparks
+  const sparks = [];
+  function spawn(n, burst = false) {
+    for (let i = 0; i < n; i++) {
+      sparks.push({ x: FX + (Math.random() - 0.5) * 90, y: FY - 40 - Math.random() * 60,
+        vx: (Math.random() - 0.5) * (burst ? 3 : 0.8), vy: -(1.2 + Math.random() * (burst ? 4 : 1.8)), life: 1,
+        el: gSparks.appendChild(mk('path')) });
+    }
+  }
+
+  // drag a log from the pile into the fire
+  const toSvg = (e) => { const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY; return p.matrixTransform(svg.getScreenCTM().inverse()); };
+  let carrying = null;
+  gPile.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    svg.setPointerCapture(e.pointerId);
+    const p = toSvg(e);
+    carrying = { g: logShape(0, 0, 128, 24, -0.15), x: p.x, y: p.y };
+    gCarry.appendChild(carrying.g);
+    carrying.g.setAttribute('transform', `translate(${f1(p.x)} ${f1(p.y)})`);
+  });
+  svg.addEventListener('pointermove', (e) => {
+    if (!carrying) return;
+    const p = toSvg(e); carrying.x = p.x; carrying.y = p.y;
+    carrying.g.setAttribute('transform', `translate(${f1(p.x)} ${f1(p.y)}) rotate(${f1(Math.sin(p.x / 40) * 8)})`);
+  });
+  const drop = () => {
+    if (!carrying) return;
+    const c = carrying; carrying = null;
+    if (Math.hypot(c.x - FX, c.y - (FY - 60)) < 150) {           // into the fire!
+      c.g.remove();
+      fuel = Math.min(MAX, fuel + 0.38); flare = Math.min(1, flare + 0.6);   // it catches, then grows
+      burning = Math.min(FIRE_LOGS.length, burning + 1); drawFireLogs();
+      spawn(10, true);
+    } else {                                                        // missed: it rolls back onto the pile
+      c.g.style.transition = 'opacity .35s'; c.g.style.opacity = '0';
+      setTimeout(() => c.g.remove(), 360);
+    }
+  };
+  svg.addEventListener('pointerup', drop);
+  svg.addEventListener('pointercancel', drop);
+
+  let last = performance.now(), lastBoilFire = -1;
+  function loop(now) {
+    requestAnimationFrame(loop);
+    if (!document.body.classList.contains('passion-on')) { last = now; return; }   // only while the page is up
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    const t = now / 1000;
+    fuel += (BASE - fuel) * dt * 0.06;                             // the extra fuel burns down slowly
+    heat += (fuel - heat) * (1 - Math.exp(-dt * (fuel > heat ? 1.6 : 0.8)));   // rises over a second or two, falls gently
+    flare *= Math.pow(0.25, dt);
+    if (fuel - heat > 0.05 && Math.random() < dt * 14) spawn(1, true);   // crackles while it's catching
+    glow.setAttribute('rx', f1(170 + heat * 70)); glow.setAttribute('ry', f1(140 + heat * 70));
+    glow.style.opacity = Math.min(1, 0.45 + heat * 0.35 + flare * 0.2);
+    if (burning > 3 && heat < 1.05 && Math.random() < dt * 0.15) { burning--; drawFireLogs(); }   // logs burn away
+    const H = 205 * heat * (1 + flare * 0.06);
+    TONGUES.forEach(([dx, w, share, ph], i) => flamePaths[i].setAttribute('d', tongue(FX + dx * (0.8 + heat * 0.2), w * (0.75 + heat * 0.3), H * share, t, ph)));
+    inner.setAttribute('d', tongue(FX + 2, 34 * (0.8 + heat * 0.2), H * 0.42, t * 1.2, 5.3));   // the inner flame line
+    // sparks rise and fade
+    if (Math.random() < dt * (2 + heat * 10)) spawn(1);
+    for (let i = sparks.length - 1; i >= 0; i--) {
+      const s = sparks[i];
+      s.vy -= dt * 1.2; s.vx += Math.sin(t * 5 + i) * 0.03; s.x += s.vx; s.y += s.vy; s.life -= dt * 0.9;
+      if (s.life <= 0 || s.y < 0) { s.el.remove(); sparks.splice(i, 1); continue; }
+      s.el.setAttribute('d', `M${f1(s.x)} ${f1(s.y)} l${f1(s.vx * 1.6)} ${f1(s.vy * 1.6)}`);
+      s.el.style.opacity = s.life;
+    }
+    // logs and stones boil with everything else
+    if (boil !== lastBoilFire) { lastBoilFire = boil; gLogs.setAttribute('transform', `translate(${f1(jit(1.4))} ${f1(jit(1.2))})`); gPile.setAttribute('transform', `translate(${f1(jit(1.4))} ${f1(jit(1.2))})`); }
+  }
+  requestAnimationFrame(loop);
+})();
+
+// ---------- phone + chat ----------
+// Same pen as everything else: outlines are pre-drawn in 4 versions and swapped on the boil tick.
+const phoneIcon = document.getElementById('phoneIcon');
+boilPath(phoneIcon, joinMakers(sketchLine(4, 6, 36, 4, 1.2, 2), sketchLine(36, 4, 37, 60, 1.2, 2), sketchLine(37, 60, 3, 61, 1.2, 2), sketchLine(3, 61, 4, 6, 1.2, 2)));
+boilPath(phoneIcon, joinMakers(sketchLine(15, 11, 25, 11, 0.5, 0.5), sketchCircle(20, 53, 3, 0.6)));
+const chatOutline = document.getElementById('chatOutline');
+boilPath(chatOutline, joinMakers(sketchLine(8, 10, 332, 6, 3, 5), sketchLine(332, 6, 334, 612, 3, 5), sketchLine(334, 612, 6, 614, 3, 5), sketchLine(6, 614, 8, 10, 3, 5)));
+boilPath(chatOutline, joinMakers(sketchLine(130, 26, 210, 26, 1, 1), sketchCircle(170, 586, 13, 1.2), sketchLine(24, 80, 316, 78, 1.5, 2)));
+
+// a hand-drawn box around any element (sized after it's on the page)
+function sketchAround(el) {
+  const w = el.offsetWidth, h = el.offsetHeight;
+  const svg = mk('svg', { viewBox: `0 0 ${w} ${h}`, preserveAspectRatio: 'none' });
+  boilPath(svg, joinMakers(sketchLine(2, 2, w - 2, 1, 2, 4), sketchLine(w - 2, 1, w - 1, h - 2, 1.5, 3), sketchLine(w - 1, h - 2, 1, h - 1, 2, 4), sketchLine(1, h - 1, 2, 2, 1.5, 3)));
+  el.prepend(svg);
+}
+
+const chatEl = document.getElementById('chat'), msgs = document.getElementById('msgs'), choices = document.getElementById('choices');
+const replies = document.getElementById('replies');
+boilPath(document.getElementById('replySep'), sketchLine(0, 3, 300, 3, 1.5, 3));
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+function bubble(text, who) {
+  const b = document.createElement('div');
+  b.className = 'bubble ' + who;
+  b.textContent = text;
+  msgs.appendChild(b);
+  sketchAround(b);
+  msgs.scrollTop = msgs.scrollHeight;
+  return b;
+}
+async function theySay(text) {
+  const t = document.createElement('div');
+  t.className = 'bubble them typing'; t.innerHTML = '<span>•</span> <span>•</span> <span>•</span>';
+  msgs.appendChild(t); sketchAround(t); msgs.scrollTop = msgs.scrollHeight;
+  await wait(650 + text.length * 18);
+  t.remove();
+  bubble(text, 'them');
+}
+// what you can say back, and what happens next
+// go: where to take you afterwards (leave it out to keep chatting)
+const REPLIES = [
+  { say: 'How has your life been?', answer: 'Let me show you!', go: () => goTo(1) },
+  { say: "What's your personality?", answer: 'Round, mostly… come see!', go: () => goTo(2) },
+  { say: 'Show me your passion!', answer: 'Okay… stand back!', go: () => goTo(3) },
+  { say: 'Bye', answer: 'Bye! See you again :)', go: () => goTo(0) },
+];
+function offerChoices() {
+  choices.innerHTML = '';
+  replies.classList.add('ready');
+  for (const r of REPLIES) {
+    const c = document.createElement('button');
+    c.className = 'choice'; c.textContent = r.say;
+    c.addEventListener('click', () => answer(r));
+    choices.appendChild(c);
+    sketchAround(c);
+  }
+}
+async function answer(r) {
+  choices.innerHTML = '';
+  replies.classList.remove('ready');
+  bubble(r.say, 'me');
+  await wait(300);
+  await theySay(r.answer);
+  if (!r.go) { await wait(300); offerChoices(); return; }   // keep chatting
+  await wait(700);
+  closeChat();
+  r.go();
+}
+let chatStarted = false;
+async function openChat() {
+  document.body.classList.add('chat-open', 'chatted');
+  if (chatStarted) { if (!choices.children.length) offerChoices(); return; }
+  chatStarted = true;
+  await wait(350);
+  await theySay('Hi, my name is jiwon');
+  await wait(250);
+  offerChoices();
+}
+function closeChat() { document.body.classList.remove('chat-open'); }
+document.getElementById('phoneBtn').addEventListener('click', () =>
+  document.body.classList.contains('chat-open') ? closeChat() : openChat());
+addEventListener('keydown', (e) => { if (e.key === 'Escape') closeChat(); });
+document.getElementById('chatBackdrop').addEventListener('click', closeChat);
+
+// boil tick hook (called from the frame loop)
+function onBoil(f) {
+  boil = f;
+  if (page === 0) render();          // the home canvas is hidden on other pages: skip it
+  boilPhotos(f);
+}
+
+
+const btn = document.getElementById('music');
+
+// ---------- music button ----------
+const song = document.getElementById('song');
+song.volume = 0.7;
+const sync = () => btn.classList.toggle('playing', !song.paused);
+song.addEventListener('play', sync);
+song.addEventListener('pause', sync);
+btn.addEventListener('click', () => (song.paused ? song.play().catch(() => {}) : song.pause()));
+</script>
+</body>
+</html>
