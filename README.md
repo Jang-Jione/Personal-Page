@@ -13,6 +13,12 @@ python3 -m http.server 5174
 
 > 외유내강 버전은 `intro-web` 폴더에서 `python3 -m http.server 5173` → http://localhost:5173
 
+## 웹으로 보기 (GitHub Pages)
+
+https://jang-jione.github.io/Personal-Page/
+
+- 사진·노래를 추가/삭제하면 `python3 make_manifest.py`로 `manifest.json`을 다시 만든 뒤 커밋·푸시 (웹에서는 폴더 목록을 읽을 수 없어서 이 목록 파일을 씀)
+
 ## 구성
 
 - 얼굴: 펜 선(SVG)으로 직접 그림 — 음악 버튼과 똑같은 2px 두께, 화면 크기와 상관없이 유지

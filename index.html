@@ -1371,11 +1371,18 @@ function layoutCards() {
 }
 new ResizeObserver(() => layoutCards()).observe(albumCards);
 
+// manifest.json (made by make_manifest.py) lists each media folder, so this also works on GitHub Pages,
+// where folders can't be listed; the local server's folder listing is the fallback.
+let manifestP = null;
+const getManifest = () => (manifestP ||= fetch('./manifest.json').then((r) => (r.ok ? r.json() : {})).catch(() => ({})));
 async function listDir(dir) {
+  const sort = (list) => list.sort((a, b) => decodeURIComponent(a).localeCompare(decodeURIComponent(b), undefined, { numeric: true }));
+  const img = (n) => /\.(?:jpe?g|png|webp)$/i.test(n);
+  const m = await getManifest();
+  if (m[dir]) return sort(m[dir].filter(img));
   try {
     const html = await (await fetch(dir)).text();
-    return [...html.matchAll(/href="([^"?#]+\.(?:jpe?g|png|webp))"/gi)].map((m) => m[1])
-      .sort((a, b) => decodeURIComponent(a).localeCompare(decodeURIComponent(b), undefined, { numeric: true }));
+    return sort([...html.matchAll(/href="([^"?#]+)"/gi)].map((x) => x[1]).filter(img));
   } catch { return []; }
 }
 // Photo-booth strip: SLOTS stacked slots + the age (baby / kid / …) written at the bottom, drawn with the pen.
