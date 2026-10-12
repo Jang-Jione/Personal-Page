@@ -20,4 +20,7 @@ for folder in FOLDERS:
 
 with open(os.path.join(HERE, 'manifest.json'), 'w', encoding='utf-8') as f:
     json.dump(manifest, f, ensure_ascii=False, indent=2)
+# the same list as a script, so it also works when index.html is opened straight from the disk (file://)
+with open(os.path.join(HERE, 'manifest.js'), 'w', encoding='utf-8') as f:
+    f.write('window.MANIFEST = ' + json.dumps(manifest, ensure_ascii=False) + ';\n')
 print('manifest.json:', {k: len(v) for k, v in manifest.items()})

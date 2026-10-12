@@ -443,7 +443,33 @@
 <audio id="cdAudio" loop preload="none"></audio>
 <audio id="song" src="./music/Sunlit%20Afternoon.mp3" loop preload="auto"></audio>
 
+<script src="manifest.js"></script>
 <script>
+// ---------- what's in a media folder ----------
+// 1) the server's folder listing (always fresh locally; any server's link format — only the file name is kept)
+// 2) manifest.js / manifest.json written by make_manifest.py (GitHub Pages, or opening the file directly)
+let manifestP = null;
+function getManifest() {
+  if (window.MANIFEST) return Promise.resolve(window.MANIFEST);
+  return (manifestP ||= fetch('./manifest.json').then((r) => (r.ok ? r.json() : {})).catch(() => ({})));
+}
+async function listFolder(dir) {
+  const sort = (list) => [...new Set(list)].sort((a, b) => decodeURIComponent(a).localeCompare(decodeURIComponent(b), undefined, { numeric: true }));
+  const isFile = (n) => /\.[a-z0-9]{2,5}$/i.test(n) && !/^\.|txt$/i.test(decodeURIComponent(n));
+  if (location.protocol.startsWith('http')) {
+    try {
+      const r = await fetch(dir);
+      if (r.ok && (r.headers.get('content-type') || '').includes('html')) {
+        const found = [...(await r.text()).matchAll(/href="([^"#]+)"/gi)]
+          .map((x) => x[1].split('?')[0].split('/').filter(Boolean).pop() || '')
+          .filter(isFile);
+        if (found.length) return sort(found);
+      }
+    } catch { /* no listing */ }
+  }
+  const m = await getManifest();
+  return m[dir] ? sort(m[dir]) : [];
+}
 // line boil: step through a few noise frames (~8 per second), no smooth motion in between
 const turb = document.getElementById('turb'), turb2 = document.getElementById('turb2');
 const BOIL_SEEDS = [1, 7, 13, 21];
@@ -1044,8 +1070,7 @@ function boilPath(parent, make, attrs = {}) {
 
   // songs in music/lp/, covers with the same name in images/lp/ (live folder listing, or manifest.json on the web)
   const listAny = async (folder) => {
-    try { const r = await fetch(folder); if (r.ok) { const f = [...(await r.text()).matchAll(/href="([^"?#]+)"/g)].map((m) => m[1]).filter((x) => /\.[a-z0-9]+$/i.test(x)); if (f.length) return f; } } catch { /* no listing */ }
-    const m = await getManifest(); return m[folder] || [];
+    return listFolder(folder);
   };
   const coverDir = box.dataset.covers;
   const [songFiles, coverFiles] = await Promise.all([listAny(dir), listAny(coverDir)]);
@@ -1430,23 +1455,9 @@ function layoutCards() {
 }
 new ResizeObserver(() => layoutCards()).observe(albumCards);
 
-// manifest.json (made by make_manifest.py) lists each media folder for GitHub Pages, where folders can't be listed.
-let manifestP = null;
-const getManifest = () => (manifestP ||= fetch('./manifest.json').then((r) => (r.ok ? r.json() : {})).catch(() => ({})));
 async function listDir(dir) {
-  const sort = (list) => list.sort((a, b) => decodeURIComponent(a).localeCompare(decodeURIComponent(b), undefined, { numeric: true }));
   const img = (n) => /\.(?:jpe?g|png|webp)$/i.test(n);
-  // the live folder listing first (always up to date locally), the manifest where there's no listing (GitHub Pages)
-  try {
-    const r = await fetch(dir);
-    if (r.ok) {
-      const html = await r.text();
-      const found = [...html.matchAll(/href="([^"?#]+)"/gi)].map((x) => x[1]).filter(img);
-      if (found.length) return sort(found);
-    }
-  } catch { /* no listing */ }
-  const m = await getManifest();
-  return m[dir] ? sort(m[dir].filter(img)) : [];
+  return (await listFolder(dir)).filter(img);
 }
 // a big look at a photo: click it → it opens large in the middle, with the same pen frame
 const lightbox = document.createElement('div');
