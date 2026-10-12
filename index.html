@@ -1466,7 +1466,14 @@ lightbox.innerHTML = '<div class="lb-card"><img alt="" /></div>';
 document.body.appendChild(lightbox);
 const lbCard = lightbox.querySelector('.lb-card'), lbImg = lightbox.querySelector('img');
 { const svg = mk('svg', { class: 'edge', viewBox: '0 0 100 100', preserveAspectRatio: 'none' }); lbCard.appendChild(svg); cardOutline(svg); }
-function openPhoto(src) { lbImg.src = src; document.body.classList.add('lb-open'); }
+function fitPhoto() {                              // always fill the same box, even small originals get scaled up
+  const ar = lbImg.naturalWidth / lbImg.naturalHeight; if (!ar) return;
+  const w = Math.min(innerWidth * .78, innerHeight * .78 * ar);
+  lbImg.style.width = w + 'px'; lbImg.style.height = w / ar + 'px';
+}
+lbImg.addEventListener('load', fitPhoto);
+addEventListener('resize', fitPhoto);
+function openPhoto(src) { lbImg.src = src; if (lbImg.complete) fitPhoto(); document.body.classList.add('lb-open'); }
 function closePhoto() { document.body.classList.remove('lb-open'); }
 lightbox.addEventListener('click', closePhoto);
 addEventListener('keydown', (e) => { if (e.key === 'Escape') closePhoto(); });
@@ -1474,6 +1481,8 @@ addEventListener('keydown', (e) => { if (e.key === 'Escape') closePhoto(); });
 (async function loadAlbum() {
   const dir = 'photos/timeline/';
   const files = await listDir(dir);                // numeric order: 0, 1, 2, … 10, 11
+  const realDir = 'photos/timeline_real/';         // clicking a drawn card opens the real photo with the same name
+  const real = new Set(await listDir(realDir));
   files.forEach((f, i) => {
     const img = new Image(); img.src = dir + f; img.decoding = 'async';
     const cv = document.createElement('canvas');
@@ -1488,7 +1497,7 @@ addEventListener('keydown', (e) => { if (e.key === 'Escape') closePhoto(); });
     card.el.prepend(cv);
     card.el.classList.add('photo-card');
     jigglers.push(cv);
-    card.el.addEventListener('click', () => openPhoto(img.src));
+    card.el.addEventListener('click', () => openPhoto(real.has(f) ? realDir + f : img.src));
     img.decode().then(() => { card.ar = img.naturalWidth / img.naturalHeight; layoutCards(); }).catch(() => { card.el.remove(); cards.splice(cards.indexOf(card), 1); layoutCards(); });
   });
   alignBar();                                       // also fits the album to the bar

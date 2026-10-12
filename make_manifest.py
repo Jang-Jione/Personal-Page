@@ -9,7 +9,7 @@ from urllib.parse import quote
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 MEDIA = ('.jpg', '.jpeg', '.png', '.webp', '.gif', '.mp3', '.m4a', '.wav', '.ogg', '.aac', '.flac')
-FOLDERS = ['photos/timeline/', 'photos/life/1_baby/', 'photos/life/2_kid/', 'photos/life/3_student/', 'photos/life/4_now/',
+FOLDERS = ['photos/timeline/', 'photos/timeline_real/', 'photos/life/1_baby/', 'photos/life/2_kid/', 'photos/life/3_student/', 'photos/life/4_now/',
            'photos/pile/', 'music/cds/', 'music/lp/', 'images/lp/']
 
 manifest = {}
