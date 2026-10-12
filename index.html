@@ -62,6 +62,28 @@
            opacity: 0; pointer-events: none; transition: opacity .6s .2s; font-family: 'Shadows Into Light', cursive; }
   body.likes-on .likes { opacity: 1; pointer-events: auto; }
   body.chat-open .likes { opacity: 0 !important; pointer-events: none !important; }
+
+  /* goal: "to be happy." — hover and a crowd of hand-drawn mouths pops out laughing */
+  .goal { position: fixed; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+          opacity: 0; pointer-events: none; transition: opacity .6s .2s; font-family: 'Shadows Into Light', cursive; }
+  body.goal-on .goal { opacity: 1; pointer-events: auto; }
+  body.chat-open .goal { opacity: 0 !important; pointer-events: none !important; }
+  .goal-ask { font-size: clamp(22px, 2.2vw, 32px); opacity: .7; }
+  .goal-stage { position: relative; width: min(86vw, 900px); height: min(58vh, 480px); display: grid; place-items: center; cursor: pointer; touch-action: manipulation; }
+  .goal-title { font-weight: 400; font-size: clamp(44px, 8vw, 118px); line-height: 1; text-align: center; }   /* no SVG filter: it must stay cheap while it giggles */
+  .goal-hint { font-size: clamp(18px, 1.6vw, 24px); opacity: .55; }
+  .goal .mouth { position: absolute; width: clamp(46px, 6.4vw, 88px); pointer-events: none; opacity: 0;
+                 transform: translate(-50%, -50%) rotate(var(--r)) scale(0);
+                 transition: transform .22s cubic-bezier(.3, 1.8, .5, 1), opacity .12s; }
+  .goal .mouth svg { display: block; width: 100%; overflow: visible; }
+  .goal .mouth path { fill: none; stroke: #111; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+  .goal .mouth path.solid { fill: #fff; }
+  .goal .mouth .ha { position: absolute; left: 92%; top: -14%; white-space: nowrap; font-size: clamp(18px, 2vw, 30px); rotate: 8deg; }
+  .goal-stage.laugh .mouth { opacity: 1; transform: translate(-50%, -50%) rotate(var(--r)) scale(1);
+                             transition-delay: var(--d); animation: laugh .34s ease-in-out calc(var(--d) + .25s) infinite alternate; }
+  .goal-stage.laugh .goal-title { animation: giggle .22s ease-in-out infinite alternate; }
+  @keyframes laugh { from { translate: 0 -4px; scale: .94 1.06; } to { translate: 0 4px; scale: 1.06 .92; } }
+  @keyframes giggle { from { rotate: -.8deg; translate: 0 -2px; } to { rotate: .8deg; translate: 0 2px; } }
   .likes-title { font-weight: 400; font-size: clamp(30px, 3.2vw, 46px); }
   .likes-ask { font-size: clamp(19px, 1.6vw, 24px); opacity: .7; }
   .likes .records { position: relative; width: min(92vw, 1100px); height: min(64vh, 620px); }
@@ -196,7 +218,7 @@
   @keyframes blink { 50% { opacity: .2; } }
   @keyframes pop { from { transform: scale(.7); opacity: 0; } }
   /* the reply area: separated by a pen line, its own hint, dashed full-width buttons (not bubbles) */
-  .chat .replies { position: absolute; left: 22px; right: 22px; bottom: 80px; height: 196px; }   /* clear of the home button */
+  .chat .replies { position: absolute; left: 22px; right: 22px; bottom: 80px; height: 244px; }   /* clear of the home button */
   .chat .replies .sep { position: absolute; left: -4px; right: -4px; top: 0; height: 6px; width: calc(100% + 8px); overflow: visible; }
   .chat .replies .hint { position: absolute; left: 2px; top: 12px; font-size: 15px; opacity: .45; transition: opacity .3s; }
   .chat .replies:not(.ready) .hint { opacity: 0; }
@@ -424,6 +446,13 @@
   <p class="likes-ask">Drop a record on the turntable.</p>
 </section>
 
+<!-- goal: to be happy — hover and mouths pop out laughing -->
+<section class="goal" id="goal" aria-label="my goal: to be happy — hover to make everyone laugh">
+  <p class="goal-ask">My goal is…</p>
+  <div class="goal-stage" id="goalStage"><h2 class="goal-title">to be happy.</h2></div>
+  <p class="goal-hint">Hover to see me laugh.</p>
+</section>
+
 <div class="chat-backdrop" id="chatBackdrop"></div>
 <div class="chat" id="chat" role="dialog" aria-label="chat with jiwon">
   <div class="paper"></div>
@@ -574,7 +603,7 @@ canvas.addEventListener('pointerleave', () => { if (smiling) { smiling = false; 
 canvas.addEventListener('click', (e) => { if (isOverFace(e.clientX, e.clientY)) openChat(); });
 
 // ---------- pages: 0 home (face), 1 me growing up (reached from the phone chat) ----------
-const PAGES = ['', '#me', '#personality', '#passion', '#likes'];
+const PAGES = ['', '#me', '#personality', '#passion', '#likes', '#goal'];
 let page = 0;
 // subtitles when you arrive on the home page
 const CAPTIONS = ["“Hi, this is my personal page.”", "“Have fun looking around!”"];
@@ -605,6 +634,7 @@ function show(n) {
   document.body.classList.toggle('traits-on', n === 2);
   document.body.classList.toggle('passion-on', n === 3);
   document.body.classList.toggle('likes-on', n === 4);
+  document.body.classList.toggle('goal-on', n === 5);
 }
 function goTo(n) {
   n = Math.max(0, Math.min(PAGES.length - 1, n));
@@ -1870,6 +1900,7 @@ const REPLIES = [
   { say: 'What do you like?', answer: 'Music! Let me play you something.', go: () => goTo(4) },
   { say: "What's your personality?", answer: 'Round, mostly… come see!', go: () => goTo(2) },
   { say: 'Show me your passion!', answer: 'Okay… stand back!', go: () => goTo(3) },
+  { say: "What's your goal?", answer: 'To be happy! Come see :)', go: () => goTo(5) },
   { say: 'Bye', answer: 'Bye! See you again :)', go: () => goTo(0) },
 ];
 function offerChoices() {
@@ -1909,6 +1940,47 @@ document.getElementById('phoneBtn').addEventListener('click', () =>
   document.body.classList.contains('chat-open') ? closeChat() : openChat());
 addEventListener('keydown', (e) => { if (e.key === 'Escape') closeChat(); });
 document.getElementById('chatBackdrop').addEventListener('click', closeChat);
+
+// ---------- goal: to be happy — hover and laughing mouths pop out around the words ----------
+(function goalPage() {
+  const stage = document.getElementById('goalStage');
+  const curve = (pts, j, closed) => () => {            // same wobbly quadratic pen stroke as the critter's face
+    const q = pts.map(([x, y]) => [x + jit(j), y + jit(j)]);
+    let d = `M${f1(q[0][0])} ${f1(q[0][1])}`;
+    for (let k = 1; k < q.length - 1; k++) d += ` Q${f1(q[k][0])} ${f1(q[k][1])} ${f1((q[k][0] + q[k + 1][0]) / 2)} ${f1((q[k][1] + q[k + 1][1]) / 2)}`;
+    return d + ` L${f1(q[q.length - 1][0])} ${f1(q[q.length - 1][1])}` + (closed ? ' Z' : '');
+  };
+  // a wide open laugh: corners up, big round jaw, a tongue sitting in the bottom, a laugh line at each corner
+  const MOUTH = [[3, 12], [18, 20], [30, 22], [42, 20], [57, 12], [54, 32], [43, 43], [30, 46], [17, 43], [6, 32], [3, 12]];
+  const TONGUE = [[16, 41], [22, 33], [30, 31], [38, 33], [44, 41]];
+  const LINES = [[[-3, 7], [0, 12], [-1, 18]], [[63, 7], [60, 12], [61, 18]]];
+  const SLOTS = [[12, 12], [32, 7], [52, 12], [72, 7], [90, 15], [5, 40], [93, 46], [7, 68], [24, 90], [44, 85], [64, 90], [84, 84], [94, 68]];
+  const WORDS = ['하하', 'ha ha', '호호', 'ho ho', '하하하!', 'hee', '호호호', 'ha!', '하하', 'ho ho', '호호', 'ha ha', 'hee hee'];
+  SLOTS.forEach(([x, y], i) => {
+    const m = document.createElement('div');
+    m.className = 'mouth';
+    m.style.left = x + '%'; m.style.top = y + '%';
+    m.style.setProperty('--r', f1(jit(24)) + 'deg');
+    m.style.setProperty('--d', (((i * 5) % 7) * 0.05).toFixed(2) + 's');   // they pop out in a ragged order
+    const svg = mk('svg', { viewBox: '0 0 60 48' });
+    boilPath(svg, curve(MOUTH, 1.8, true), { class: 'solid' });
+    boilPath(svg, curve(TONGUE, 1.4, false));
+    for (const l of LINES) boilPath(svg, curve(l, 1, false));
+    m.appendChild(svg);
+    const w = document.createElement('span');
+    w.className = 'ha'; w.textContent = WORDS[i];
+    m.appendChild(w);
+    stage.appendChild(m);
+  });
+  let off = 0;
+  const laugh = (on) => stage.classList.toggle('laugh', on);
+  stage.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') laugh(true); });
+  stage.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') laugh(false); });
+  stage.addEventListener('pointerdown', (e) => {         // touch screens have no hover: a tap laughs for a few seconds
+    if (e.pointerType === 'mouse') return;
+    laugh(true); clearTimeout(off); off = setTimeout(() => laugh(false), 3600);
+  });
+})();
 
 // boil tick hook (called from the frame loop)
 const jigglers = [];                               // photo canvases that jiggle with the boil beat
