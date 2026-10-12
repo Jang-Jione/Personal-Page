@@ -56,33 +56,47 @@
   .photo svg path { fill: none; stroke: #111; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 
   /* record player + CDs (bar 25) */
-  .records { position: absolute; left: 44vw; right: 1.5vw; top: 3vh; bottom: 9vh; transform: none; }
-  body.met .records.on { transform: none; }
+  .likes { position: fixed; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+           opacity: 0; pointer-events: none; transition: opacity .6s .2s; font-family: 'Shadows Into Light', cursive; }
+  body.likes-on .likes { opacity: 1; pointer-events: auto; }
+  body.chat-open .likes { opacity: 0 !important; pointer-events: none !important; }
+  .likes-title { font-weight: 400; font-size: clamp(30px, 3.2vw, 46px); }
+  .likes-ask { font-size: clamp(19px, 1.6vw, 24px); opacity: .7; }
+  .likes .records { position: relative; width: min(92vw, 1100px); height: min(64vh, 620px); }
   /* one fixed-ratio stage (760 × 440) holding the player and the CDs, scaled to fit as a whole */
   .records .stage { position: absolute; left: 0; top: 0; width: 790px; height: 440px; transform-origin: 0 0; --sw: 2px; }
   .player { position: absolute; left: 0; top: 0; width: 540px; height: 437px; overflow: visible; }
   /* the stage is scaled as a whole; the line width is set in drawing units to come out at 2px on screen,
      like the person (--sw = 2 / stage scale; CDs also undo their own growth and their 120→110 viewBox) */
   .player path { fill: none; stroke: #111; stroke-width: calc(var(--sw) / 1.2857); stroke-linecap: round; stroke-linejoin: round; } /* 540/420 */
-  .cd path { fill: none; stroke: #111; stroke-width: calc(var(--sw) * 1.0909 / var(--s, 1)); stroke-linecap: round; stroke-linejoin: round; }
+  .cd path { fill: none; stroke: #111; stroke-width: calc(var(--sw) * 0.923 / var(--s, 1)); stroke-linecap: round; stroke-linejoin: round; }
   .player .paper { fill: #fff; }
   .player .arm { transform-box: view-box; transform-origin: 352px 64px; transition: transform .9s cubic-bezier(.5,0,.2,1); }
   .records.spinning .player .arm { transform: rotate(24deg); }
   .cd {
-    position: absolute; left: 0; top: 0; width: 110px; touch-action: none; user-select: none; cursor: grab;
+    position: absolute; left: 0; top: 0; width: 130px; touch-action: none; user-select: none; cursor: grab;
+    transform-origin: 65px 65px;   /* grow / turn around the record's centre, not the label under it */
     transition: opacity .3s; contain: layout;
   }
   .cd:active { cursor: grabbing; }
   .cd.snapping { transition: transform .45s cubic-bezier(.3,1.3,.5,1); }
-  .cd .disc { position: relative; width: 110px; height: 110px; }
+  .cd .disc { position: relative; width: 130px; height: 130px; }
   .cd .disc canvas, .cd .disc svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
   .cd.playing .disc { animation: spin 2.2s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .cd .name {
     margin-top: 6px; text-align: center; font-family: 'Shadows Into Light', cursive; font-size: 15px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: opacity .3s;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: opacity .3s; max-width: 150px; margin-left: auto; margin-right: auto;
   }
   .cd.docked .name { opacity: 0; }
+
+  /* a line under the bar / person / photos */
+  .life-title {
+    position: absolute; left: 0; right: 0; text-align: center; top: 90vh;
+    font-family: 'Shadows Into Light', cursive; font-size: clamp(26px, 2.6vw, 38px);
+    opacity: 0; pointer-events: none; transition: opacity .6s .35s;
+  }
+  body.met .life-title { opacity: 1; }
 
   /* life album (right of the person) */
   .album {
@@ -91,7 +105,15 @@
   }
   body.met .album { opacity: 1; pointer-events: auto; }
   /* every photo is its own card in its own proportions: white mat + a wobbly pen outline that boils */
-  .album .cards { position: absolute; left: 0; right: 0; top: 10vh; height: 74vh; }   /* top/height follow the bar (JS) */
+  .album .cards { position: absolute; left: 0; right: 0; top: 10vh; height: 74vh; overflow: hidden;   /* top/height follow the bar (JS) */
+                  -webkit-mask-image: linear-gradient(transparent, #000 9%, #000 91%, transparent); mask-image: linear-gradient(transparent, #000 9%, #000 91%, transparent); }
+  .album .reel-track { position: absolute; left: 0; right: 0; top: 0; will-change: transform; }
+  .album .card.photo-card { cursor: zoom-in; padding: 0; background: none; }
+  .album .card.photo-card > svg.edge { display: none; }                 /* photos: no pen frame, they just jiggle */
+  .album .card.photo-card canvas { will-change: transform; }
+  .album .card.future-card { cursor: default; }
+  .album .card .future { display: block; overflow: visible; }
+  .album .card .future path { fill: none; stroke: #111; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
   .album .card {
     position: absolute; left: 50%; top: 50%; padding: 12px; background: #fff;
     opacity: 0; transition: opacity .45s; pointer-events: none;
@@ -99,7 +121,7 @@
   .album .card.on { opacity: 1; pointer-events: auto; }
   /* hover: the picture lifts a little off the page and tips a hair (separate from the inline position transform) */
   .album .card { transition: opacity .45s, scale .3s cubic-bezier(.3,1.6,.5,1), translate .3s cubic-bezier(.3,1.6,.5,1), rotate .3s; }
-  .album .card.on:hover { scale: 1.035; translate: 0 -6px; rotate: -1.2deg; }
+  .album .card.on:hover { scale: 1.03; rotate: -1deg; }
   .album .card canvas { display: block; }
   .album .card > svg.edge { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
   .album .card > svg.edge path { fill: none; stroke: #111; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
@@ -276,16 +298,15 @@
 
   <!-- things that show up on the right as you move along the bar -->
   <!-- life album: one tidy framed photo that follows the bar; at the very top, a drawn family portrait -->
+  <p class="life-title" id="lifeTitle">Let me show you my life!!</p>
+
   <div class="album" id="album" data-dir="photos/life/">
     <div class="cards" id="albumCards">
-      <p class="empty" id="albumEmpty">add photos to<br/>photos/life/</p>
+      <p class="empty" id="albumEmpty">add photos to<br/>photos/timeline/</p>
     </div>
     <p class="when" id="albumWhen"></p>
   </div>
   <div class="shelf pile" id="pile" data-at="50" data-dir="photos/pile/" aria-label="photos — drag them around"></div>
-  <div class="shelf records" id="records" data-at="25" data-dir="music/cds/" aria-label="record player — drop a CD on it to play">
-    <div class="stage"><svg class="player" viewBox="0 0 420 340" aria-hidden="true"></svg></div>
-  </div>
   <div class="shelf globe" id="globe" data-at="100" aria-label="a desk globe — drag to spin it">
     <canvas></canvas>
     <svg viewBox="0 0 500 560" preserveAspectRatio="xMidYMid meet" aria-hidden="true"></svg>
@@ -390,6 +411,15 @@
   <p class="passion-ask">Throw in a log — make my passion burn bigger!</p>
 </section>
 
+<!-- likes: a turntable and a few LPs; drop one on and it plays (the background music pauses) -->
+<section class="likes" id="likes" aria-label="what I like: drag a record onto the turntable to play it">
+  <h2 class="likes-title">These are the songs I like.</h2>
+  <div class="records" id="records" data-dir="music/lp/" data-covers="images/lp/">
+    <div class="stage"><svg class="player" viewBox="0 0 420 340" aria-hidden="true"></svg></div>
+  </div>
+  <p class="likes-ask">Drop a record on the turntable.</p>
+</section>
+
 <div class="chat-backdrop" id="chatBackdrop"></div>
 <div class="chat" id="chat" role="dialog" aria-label="chat with jiwon">
   <div class="paper"></div>
@@ -411,7 +441,7 @@
 </button>
 <!-- song file lives in music/ -->
 <audio id="cdAudio" loop preload="none"></audio>
-<audio id="song" src="./music/%5BThey%20Long%20To%20Be%5D%20Close%20To%20You.mp3" loop preload="auto"></audio>
+<audio id="song" src="./music/Sunlit%20Afternoon.mp3" loop preload="auto"></audio>
 
 <script>
 // line boil: step through a few noise frames (~8 per second), no smooth motion in between
@@ -514,7 +544,7 @@ canvas.addEventListener('pointerleave', () => { if (smiling) { smiling = false; 
 canvas.addEventListener('click', (e) => { if (isOverFace(e.clientX, e.clientY)) openChat(); });
 
 // ---------- pages: 0 home (face), 1 me growing up (reached from the phone chat) ----------
-const PAGES = ['', '#me', '#personality', '#passion'];
+const PAGES = ['', '#me', '#personality', '#passion', '#likes'];
 let page = 0;
 // subtitles when you arrive on the home page
 const CAPTIONS = ["“Hi, this is my personal page.”", "“Have fun looking around!”"];
@@ -544,6 +574,7 @@ function show(n) {
   document.body.classList.toggle('met', n === 1);
   document.body.classList.toggle('traits-on', n === 2);
   document.body.classList.toggle('passion-on', n === 3);
+  document.body.classList.toggle('likes-on', n === 4);
 }
 function goTo(n) {
   n = Math.max(0, Math.min(PAGES.length - 1, n));
@@ -695,7 +726,8 @@ function drawPerson(a, fig = me, opt = {}) {
   const { parts, headGroups, smileGroups } = fig;
   const waveK = opt.wave || 0, smile = !!opt.smile;
   const k = {}; for (const key in KEY) k[key] = sample(KEY[key], a);
-  const w = HEADS.map((_, i) => Math.max(0, 1 - Math.abs(a * (HEADS.length - 1) - i)));   // cross-fade weights
+  const near = Math.round(a * (HEADS.length - 1));
+  const w = HEADS.map((_, i) => (i === near ? 1 : 0));   // one face at a time, never two blended
   const base = sample(HEAD_BASE, a);
   const headH = (base - sample(HEAD_TOP, a)) * k.k;
   const feetY = 288, cx = 100;
@@ -788,13 +820,14 @@ new ResizeObserver(alignBar).observe(document.querySelector('.life'));
 function placeMomentAreas() {
   const life = document.querySelector('.life'), lr = life.getBoundingClientRect();
   const span = lr.height || innerHeight * 0.6;
-  const gap = Math.max(16, innerWidth * 0.015);
-  const albumW = Math.round(Math.min(span * 0.68, innerWidth * 0.45));   // just wide enough for the strip / family frame
+  // the photos start exactly as far from the person as the person is from the bar
+  const gap = parseFloat(getComputedStyle(life).columnGap) || 16;
+  const albumW = Math.round(Math.min(span, 340 * 2) * 0.5 * 1.75);       // two zigzag columns of width W (see layoutCards)
   const left = Math.max(16, Math.round((innerWidth - (lr.width + gap + albumW)) / 2));
   life.style.left = left + 'px';
   const albumEl = document.getElementById('album');
   if (albumEl) { albumEl.style.left = (left + lr.width + gap) + 'px'; albumEl.style.width = albumW + 'px'; albumEl.style.right = 'auto'; }
-  document.querySelectorAll('.pile, .records, .globe').forEach((el) => (el.style.left = (left + lr.width + gap) + 'px'));
+  document.querySelectorAll('.pile, .globe').forEach((el) => (el.style.left = (left + lr.width + gap) + 'px'));
   if (typeof alignBar === 'function' && momentsReady) alignBar();   // positions moved: refit the album to the bar
 }
 new ResizeObserver(placeMomentAreas).observe(document.querySelector('.life'));
@@ -1009,54 +1042,57 @@ function boilPath(parent, make, attrs = {}) {
                            sketchLine(330, 240, 346, 256, 1.5, 2), sketchLine(346, 256, 357, 247, 1.5, 2)));   // arm + head
   svg.appendChild(arm);
 
-  // find the songs and covers
-  let files = [];
-  try {
-    const html = await (await fetch(dir)).text();
-    files = [...html.matchAll(/href="([^"?#]+)"/g)].map((m) => m[1]);
-  } catch { /* no listing */ }
+  // songs in music/lp/, covers with the same name in images/lp/ (live folder listing, or manifest.json on the web)
+  const listAny = async (folder) => {
+    try { const r = await fetch(folder); if (r.ok) { const f = [...(await r.text()).matchAll(/href="([^"?#]+)"/g)].map((m) => m[1]).filter((x) => /\.[a-z0-9]+$/i.test(x)); if (f.length) return f; } } catch { /* no listing */ }
+    const m = await getManifest(); return m[folder] || [];
+  };
+  const coverDir = box.dataset.covers;
+  const [songFiles, coverFiles] = await Promise.all([listAny(dir), listAny(coverDir)]);
   const cds = new Map();
-  for (const f of files) {
-    const m = decodeURIComponent(f).match(/^(.*)\.([^.]+)$/);
-    if (!m) continue;
-    const [, name, ext] = m, kind = /^(mp3|m4a|wav|ogg|aac|flac)$/i.test(ext) ? 'song' : /^(jpe?g|png|webp|gif)$/i.test(ext) ? 'cover' : null;
-    if (!kind) continue;
-    if (!cds.has(name)) cds.set(name, { name });
-    cds.get(name)[kind] = dir + f;
-  }
+  const split = (f) => decodeURIComponent(f).match(/^(.*)\.([^.]+)$/);
+  for (const f of songFiles) { const m = split(f); if (m && /^(mp3|m4a|wav|ogg|aac|flac)$/i.test(m[2])) cds.set(m[1], { name: m[1], song: dir + f }); }
+  for (const f of coverFiles) { const m = split(f); if (m && /^(jpe?g|png|webp|gif)$/i.test(m[2]) && cds.has(m[1])) cds.get(m[1]).cover = coverDir + f; }
 
-  const SIZE = 110;                                 // CD size, in stage units
-  const platterCenter = () => ({ x: PL.cx * PS, y: PLAYER_TOP + PL.cy * PS, r: (PL.r - 14) * PS });   // stage units: never changes
+  const SIZE = 130;                                 // record size, in stage units
+  const platterCenter = () => ({ x: PL.cx * PS, y: PLAYER_TOP + PL.cy * PS, r: (PL.r - 6) * PS });   // stage units: never changes
+  // the background music pauses while a record plays, and comes back when you lift it off
+  const homeSong = document.getElementById('song');
+  let homeWasPlaying = false;
   let docked = null, z = 1;
 
   [...cds.values()].forEach((cd, i) => {
     const el = document.createElement('div');
     el.className = 'cd';
     el.innerHTML = '<div class="disc"><canvas></canvas><svg viewBox="0 0 120 120"></svg></div><div class="name"></div>';
+    el.title = cd.name;
     el.querySelector('.name').textContent = cd.name;
     const disc = el.querySelector('.disc'), cv = disc.querySelector('canvas'), dsvg = disc.querySelector('svg');
     dsvg.setAttribute('viewBox', '0 0 120 120');
-    boilPath(dsvg, sketchCircle(60, 60, 59, 2.4));
-    boilPath(dsvg, sketchCircle(60, 60, 11, 1.2));
+    boilPath(dsvg, sketchCircle(60, 60, 59, 2.2));      // the record's edge
+    boilPath(dsvg, sketchCircle(60, 60, 23, 1.2));      // the label
     stage.appendChild(el);
 
     // cover, cut into a disc with a real hole in the middle
     const dpr = Math.min(devicePixelRatio, 2);
     cv.width = cv.height = SIZE * dpr * 2;           // room to stay sharp when it grows on the platter
     const c = cv.getContext('2d'), R = cv.width / 2;
-    const paint = (img) => {
-      c.save(); c.beginPath(); c.arc(R, R, R, 0, Math.PI * 2); c.clip();
-      c.fillStyle = '#fff'; c.fillRect(0, 0, cv.width, cv.height);
+    const paint = (img) => {                          // a vinyl record: fine grooves, the cover as its round label
+      c.clearRect(0, 0, cv.width, cv.height);
+      c.fillStyle = '#fff'; c.beginPath(); c.arc(R, R, R, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = 'rgba(17,17,17,.16)'; c.lineWidth = dpr * 0.9;
+      for (let g = 0.42; g < 0.97; g += 0.035) { c.beginPath(); c.arc(R, R, R * g, 0, Math.PI * 2); c.stroke(); }
+      c.strokeStyle = 'rgba(17,17,17,.3)';             // a light catching across the grooves
+      c.beginPath(); c.arc(R, R, R * 0.7, -2.4, -1.7); c.stroke(); c.beginPath(); c.arc(R, R, R * 0.82, 0.7, 1.3); c.stroke();
+      const L = R * 23 / 60;
+      c.save(); c.beginPath(); c.arc(R, R, L, 0, Math.PI * 2); c.clip();
       if (img) {
-        const s = Math.max(cv.width / img.naturalWidth, cv.height / img.naturalHeight);
+        const s = Math.max(2 * L / img.naturalWidth, 2 * L / img.naturalHeight);
         c.drawImage(img, R - img.naturalWidth * s / 2, R - img.naturalHeight * s / 2, img.naturalWidth * s, img.naturalHeight * s);
-      } else {                                       // no cover: a few pen rings like a bare CD
-        c.strokeStyle = 'rgba(17,17,17,.35)'; c.lineWidth = dpr;
-        for (const rr of [0.82, 0.62, 0.42]) { c.beginPath(); c.arc(R, R, R * rr, 0, Math.PI * 2); c.stroke(); }
-      }
+      } else { c.fillStyle = '#f4f2ee'; c.fillRect(R - L, R - L, 2 * L, 2 * L); }
       c.restore();
-      c.globalCompositeOperation = 'destination-out';
-      c.beginPath(); c.arc(R, R, R * 11 / 60, 0, Math.PI * 2); c.fill();
+      c.globalCompositeOperation = 'destination-out';  // the spindle hole
+      c.beginPath(); c.arc(R, R, R * 0.035, 0, Math.PI * 2); c.fill();
       c.globalCompositeOperation = 'source-over';
     };
     paint(null);
@@ -1066,7 +1102,7 @@ function boilPath(parent, make, attrs = {}) {
     const st = { x: 0, y: 0, r: jit(16), s: 1 };
     const home = () => {                             // 2 columns × 3 rows beside the player, then a loose pile
       const col = i % 2, row = Math.floor(i / 2) % 3, layer = Math.floor(i / 6);
-      return { x: 560 + col * (SIZE + 10) + jit(8) + layer * 14, y: 10 + row * (SIZE + 38) + jit(8) + layer * 12 };
+      return { x: 560 + col * (SIZE - 6) + jit(8) + layer * 14, y: 4 + row * (SIZE + 14) + jit(6) + layer * 12 };
     };
     const place = () => {
       el.style.transform = `translate3d(${f1(st.x)}px, ${f1(st.y)}px, 0) rotate(${f1(st.r)}deg) scale(${st.s.toFixed(3)})`;
@@ -1084,7 +1120,7 @@ function boilPath(parent, make, attrs = {}) {
       el.classList.add('playing'); box.classList.add('spinning');
       docked = api;
       if (cd.song) {
-        const homeSong = document.getElementById('song'); if (homeSong && !homeSong.paused) homeSong.pause();
+        if (homeSong && !homeSong.paused) { homeWasPlaying = true; homeSong.pause(); }
         audio.src = cd.song; audio.currentTime = 0; audio.play().catch(() => {});
       }
     };
@@ -1092,6 +1128,7 @@ function boilPath(parent, make, attrs = {}) {
       el.classList.remove('playing', 'docked'); box.classList.remove('spinning');
       audio.pause();
       docked = null;
+      if (homeWasPlaying && homeSong) { homeWasPlaying = false; homeSong.play().catch(() => {}); }   // back to the usual music
       st.s = 1;
       if (goHome) { Object.assign(st, home(), { r: jit(16) }); el.classList.add('snapping'); setTimeout(() => el.classList.remove('snapping'), 460); }
       place();
@@ -1121,11 +1158,6 @@ function boilPath(parent, make, attrs = {}) {
     el.addEventListener('pointercancel', drop);
   });
 
-  // leaving this spot on the bar pauses the record; coming back picks it up again
-  new MutationObserver(() => {
-    if (!box.classList.contains('on')) audio.pause();
-    else if (docked && audio.src && audio.paused) audio.play().catch(() => {});
-  }).observe(box, { attributes: true, attributeFilter: ['class'] });
 })();
 // ---------- desk globe (bar 100) ----------
 // Spins slowly on its own; drag it to spin it yourself (it coasts, then settles back to its slow turn).
@@ -1311,20 +1343,23 @@ fitAlbumToBar = (top, bottom) => {
   albumCards.style.top = f1(top - a.top) + 'px';
   albumCards.style.height = f1(Math.max(60, bottom - top)) + 'px';
   albumWhen.style.top = f1(bottom - a.top + 14) + 'px';
+  document.getElementById('lifeTitle').style.top = f1(bottom + Math.max(24, innerHeight * 0.045)) + 'px';
   layoutCards();
 };
+// The reel: every card stacked in one column (0 at the bottom … the family on top), seen through a window
+// that runs exactly between the bar's ends. The bar's position scrolls it: the card for 'here' sits in the middle.
+const reelTrack = document.createElement('div');
+reelTrack.className = 'reel-track';
+albumCards.appendChild(reelTrack);
+let reelCenters = [], reelH = 0;
 function updateAlbum(v) {
-  // the nearest age that has something; all of its cards show together
-  let best = null;
-  for (const c of cards) if (best === null || Math.abs(c.at - v) < Math.abs(best - v)) best = c.at;
-  if (best !== null && Math.abs(best - v) > 13) best = null;    // nothing for this age (yet)
-  for (const c of cards) c.el.classList.toggle('on', c.at === best);
-  const word = wordFor(v);
-  const shownStrip = best !== null && cards.some((c) => c.at === best && c.el.classList.contains('strip'));
-  albumWhen.textContent = shownStrip ? '' : word;      // a strip already says it at its foot
-  const age = AGES.find((a) => a.word === word);
-  albumEmpty.innerHTML = age ? `add photos to<br/>photos/life/${age.dir}` : '';
-  albumEmpty.style.display = best ? 'none' : '';
+  albumWhen.textContent = '';
+  const n = reelCenters.length;
+  albumEmpty.style.display = n > 1 ? 'none' : '';
+  if (!n) return;
+  const u = Math.max(0, Math.min(n - 1, (v / 100) * (n - 1))), i = Math.floor(u), f = u - i;
+  const c = reelCenters[i] + ((reelCenters[Math.min(n - 1, i + 1)] ?? reelCenters[i]) - reelCenters[i]) * f;
+  reelTrack.style.transform = `translateY(${f1(reelH / 2 - c)}px)`;
 }
 
 // a sketchy outline for a card: bumpy sides overshooting the corners; 4 versions that differ a hair
@@ -1346,7 +1381,7 @@ function makeCard(at, ar, fill) {
   el.className = 'card';
   const svg = mk('svg', { class: 'edge', viewBox: '0 0 100 100', preserveAspectRatio: 'none' });
   el.appendChild(svg); cardOutline(svg);
-  albumCards.appendChild(el);
+  reelTrack.appendChild(el);
   // its own random toss, kept for good so resizing doesn't reshuffle: tilt, size, nudge, stacking
   const card = { el, at, ar, fill, rot: (Math.random() - 0.5) * 16, size: 0.82 + Math.random() * 0.22,
                  jx: Math.random() - 0.5, jy: Math.random() - 0.5, z: Math.floor(Math.random() * 50) };
@@ -1354,44 +1389,66 @@ function makeCard(at, ar, fill) {
   cards.push(card);
   return card;
 }
-// size every card to fit the area while keeping its own ratio
-// lay each age's cards out as a loose, overlapping pile: a rough grid, then every card nudged,
-// tilted and resized a bit at random so it looks tossed on a table rather than lined up
+// zigzag: cards alternate left / right, each one a little higher than the last and overlapping it a bit;
+// 0 at the bottom, the family frame centred on top. Each keeps its own proportions.
 function layoutCards() {
   const b = albumCards.getBoundingClientRect();
   if (!b.width || !b.height) return;
-  for (const c of cards) {
-    const strip = c.el.classList.contains('strip'), pad = strip ? 0 : c.el.classList.contains('framed') ? 60 : 24;
-    const maxH = (strip ? b.height * 0.92 : b.height * 0.61) - pad, maxW = b.width - pad;   // a touch smaller than the bar
-    const w = Math.min(maxW, maxH * c.ar), h = w / c.ar;
-    c.fill(Math.round(w), Math.round(h));
-    c.el.style.left = f1(b.width / 2) + 'px'; c.el.style.top = f1(b.height / 2) + 'px';
-    c.el.style.transform = 'translate(-50%, -50%)';
-  }
+  reelH = b.height;
+  const order = [...cards].sort((p, q) => p.at - q.at);
+  const W = Math.min(b.height * 0.5, 340, b.width / 1.75);
+  const sizes = order.map((c, k) => {
+    const framed = c.el.classList.contains('framed'), pad = framed ? 60 : c.el.classList.contains('photo-card') ? 0 : 24;
+    const w = (framed ? W * 1.15 : W) - pad, h = w / c.ar;
+    const last = k === order.length - 1 && framed;
+    // columns: the left one flush with the area's left edge (= one bar-to-person gap from the person), the right one flush right
+    return { c, w, h, H: h + pad, x: last ? b.width / 2 : (k % 2 ? b.width - W / 2 : W / 2) };
+  });
+  // step up by ~60% of the neighbours' heights, so consecutive cards overlap like a zigzag
+  const ys = [0];
+  for (let k = 1; k < sizes.length; k++) ys.push(ys[k - 1] + (sizes[k - 1].H + sizes[k].H) / 2 * 0.62);
+  const total = ys[ys.length - 1] + sizes[0].H / 2 + sizes[sizes.length - 1].H / 2;
+  reelCenters = [];
+  sizes.forEach((s, k) => {
+    const cy = total - sizes[0].H / 2 - ys[k];                       // 0 at the bottom, going up
+    s.c.fill(Math.round(s.w), Math.round(s.h));
+    s.c.el.classList.add('on');
+    s.c.el.style.left = f1(s.x) + 'px'; s.c.el.style.top = f1(cy) + 'px';
+    s.c.el.style.transform = 'translate(-50%, -50%)';
+    s.c.el.style.zIndex = k + 1;                                      // newer ones overlap older ones
+    reelCenters.push(cy);
+  });
+  reelTrack.style.height = f1(total) + 'px';
+  // one dot on the bar per card, and the bar settles on them
+  albumDots.forEach((d) => d.c.remove());
+  albumDots = order.length > 1 ? order.map((_, k) => {
+    const c = mk('circle', { r: 2.6, style: 'fill:#111' }); sliderSvg.insertBefore(c, knob);
+    return { c, at: (k / (order.length - 1)) * 100 };
+  }) : [];
+  placeDots();
+  updateAlbum(age * 100);
 }
 new ResizeObserver(() => layoutCards()).observe(albumCards);
 
-// manifest.json (made by make_manifest.py) lists each media folder, so this also works on GitHub Pages,
-// where folders can't be listed; the local server's folder listing is the fallback.
+// manifest.json (made by make_manifest.py) lists each media folder for GitHub Pages, where folders can't be listed.
 let manifestP = null;
 const getManifest = () => (manifestP ||= fetch('./manifest.json').then((r) => (r.ok ? r.json() : {})).catch(() => ({})));
 async function listDir(dir) {
   const sort = (list) => list.sort((a, b) => decodeURIComponent(a).localeCompare(decodeURIComponent(b), undefined, { numeric: true }));
   const img = (n) => /\.(?:jpe?g|png|webp)$/i.test(n);
-  const m = await getManifest();
-  if (m[dir]) return sort(m[dir].filter(img));
+  // the live folder listing first (always up to date locally), the manifest where there's no listing (GitHub Pages)
   try {
-    const html = await (await fetch(dir)).text();
-    return sort([...html.matchAll(/href="([^"?#]+)"/gi)].map((x) => x[1]).filter(img));
-  } catch { return []; }
+    const r = await fetch(dir);
+    if (r.ok) {
+      const html = await r.text();
+      const found = [...html.matchAll(/href="([^"?#]+)"/gi)].map((x) => x[1]).filter(img);
+      if (found.length) return sort(found);
+    }
+  } catch { /* no listing */ }
+  const m = await getManifest();
+  return m[dir] ? sort(m[dir].filter(img)) : [];
 }
-// Photo-booth strip: SLOTS stacked slots + the age (baby / kid / …) written at the bottom, drawn with the pen.
-// Proportions are fixed (STRIP_*), so the outline is drawn once and the photos are cropped into the slots.
-const SLOTS = 2;
-const STRIP_W = 100, STRIP_PAD = 7, STRIP_GAP = 5, SLOT_H = 64.5, STRIP_FOOT = 22;
-const STRIP_H = STRIP_PAD * 2 + SLOT_H * SLOTS + STRIP_GAP * (SLOTS - 1) + STRIP_FOOT;
-const slotY = (i) => STRIP_PAD + i * (SLOT_H + STRIP_GAP);
-// a big look at the real photo: click a slot → it opens in colour, with the same pen frame
+// a big look at a photo: click it → it opens large in the middle, with the same pen frame
 const lightbox = document.createElement('div');
 lightbox.className = 'lightbox';
 lightbox.innerHTML = '<div class="lb-card"><img alt="" /></div>';
@@ -1403,98 +1460,47 @@ function closePhoto() { document.body.classList.remove('lb-open'); }
 lightbox.addEventListener('click', closePhoto);
 addEventListener('keydown', (e) => { if (e.key === 'Escape') closePhoto(); });
 
-function makeStrip(at, imgs, word) {
-  const cv = document.createElement('canvas');
-  const card = makeCard(at, STRIP_W / STRIP_H, (w, h) => {
-    cv.style.width = w + 'px'; cv.style.height = h + 'px';
-    const dpr = Math.min(devicePixelRatio, 2), k = (w * dpr) / STRIP_W;
-    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
-    const c = cv.getContext('2d'); c.imageSmoothingQuality = 'high';
-    imgs.slice(0, SLOTS).forEach((img, i) => {
-      if (!img.naturalWidth) return;
-      const sx = STRIP_PAD * k, sy = slotY(i) * k, sw = (STRIP_W - STRIP_PAD * 2) * k, sh = SLOT_H * k;
-      const sc = Math.max(sw / img.naturalWidth, sh / img.naturalHeight);       // cover-crop into the slot
-      c.save(); c.beginPath(); c.rect(sx, sy, sw, sh); c.clip();
-      c.drawImage(img, sx + (sw - img.naturalWidth * sc) / 2, sy + (sh - img.naturalHeight * sc) / 2, img.naturalWidth * sc, img.naturalHeight * sc);
-      c.restore();
-    });
-  });
-  card.el.classList.add('strip');
-  card.el.prepend(cv);
-  // click a slot → see the real photo, big
-  card.el.addEventListener('click', (e) => {
-    const r = cv.getBoundingClientRect(), y = (e.clientY - r.top) / r.height * STRIP_H;
-    const i = [...Array(SLOTS).keys()].find((j) => y >= slotY(j) && y <= slotY(j) + SLOT_H);
-    if (i !== undefined && imgs[i] && imgs[i].naturalWidth) openPhoto(imgs[i].src);
-  });
-  // the slots, outlined with the same sketchy pen, and a signature at the foot
-  const marks = mk('svg', { class: 'edge slots', viewBox: `0 0 ${STRIP_W} ${f1(STRIP_H)}`, preserveAspectRatio: 'none' });
-  for (let i = 0; i < SLOTS; i++) {
-    const x0 = STRIP_PAD, y0 = slotY(i), x1 = STRIP_W - STRIP_PAD, y1 = y0 + SLOT_H;
-    boilPath(marks, joinMakers(sketchLine(x0, y0, x1, y0, 0.7, 1.5), sketchLine(x1, y0, x1, y1, 0.7, 1.5), sketchLine(x1, y1, x0, y1, 0.7, 1.5), sketchLine(x0, y1, x0, y0, 0.7, 1.5)));
-  }
-  const sig = mk('text', { x: STRIP_W / 2, y: STRIP_H - STRIP_FOOT * 0.38, 'text-anchor': 'middle' });
-  sig.textContent = word;
-  marks.appendChild(sig);
-  card.el.appendChild(marks);
-  return card;
-}
 (async function loadAlbum() {
-  const root = album.dataset.dir;
-  for (const age of AGES) {
-    const files = await listDir(root + age.dir);
-    if (!files.length) continue;
-    const imgs = files.slice(0, SLOTS).map((f) => { const img = new Image(); img.src = root + age.dir + f; img.decoding = 'async'; return img; });
-    makeStrip(age.at, imgs, age.word);
-    Promise.allSettled(imgs.map((img) => img.decode())).then(() => layoutCards());   // redraw once the photos are in
-    const dot = mk('circle', { r: 3.2, style: 'fill:#111' }); sliderSvg.insertBefore(dot, knob); albumDots.push({ c: dot, at: age.at });
-  }
-  if (albumDots.length) album.classList.add('has-photos');
+  const dir = 'photos/timeline/';
+  const files = await listDir(dir);                // numeric order: 0, 1, 2, … 10, 11
+  files.forEach((f, i) => {
+    const img = new Image(); img.src = dir + f; img.decoding = 'async';
+    const cv = document.createElement('canvas');
+    const card = makeCard(i, 4 / 3, (w, h) => {
+      cv.style.width = w + 'px'; cv.style.height = h + 'px';
+      if (!img.naturalWidth) return;
+      const dpr = Math.min(devicePixelRatio, 2);
+      cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+      const c = cv.getContext('2d'); c.imageSmoothingQuality = 'high';
+      c.drawImage(img, 0, 0, cv.width, cv.height);           // drawn once at display size
+    });
+    card.el.prepend(cv);
+    card.el.classList.add('photo-card');
+    jigglers.push(cv);
+    card.el.addEventListener('click', () => openPhoto(img.src));
+    img.decode().then(() => { card.ar = img.naturalWidth / img.naturalHeight; layoutCards(); }).catch(() => { card.el.remove(); cards.splice(cards.indexOf(card), 1); layoutCards(); });
+  });
   alignBar();                                       // also fits the album to the bar
   layoutCards();
-  updateAlbum(age * 100);
 })();
 
-// the family portrait (grandpa me, my son, my daughter) in the same pen as everything else
-(function drawFamily() {
-  // someday: a framed picture of my family laughing — me (glasses), my wife, our daughter and son.
-  // Same pen and head style as everything else; the whole drawing boils like the person on the bar.
-  const svg = mk('svg', { class: 'family', viewBox: '66 40 254 266', 'aria-label': 'a framed drawing of my future family laughing together' });
-  const card = makeCard(100, 254 / 266, (w, h) => { svg.setAttribute('width', w); svg.setAttribute('height', h); });
+// the very top of the reel: the future — just a big hand-drawn '?', boiling like the other lines
+(function futureMark() {
+  const svg = mk('svg', { class: 'future', viewBox: '0 0 200 250', 'aria-label': 'the future: a question mark' });
+  boilPath(svg, joinMakers(
+    () => {                                          // the hook, as one smooth stroke through a few wobbly points
+      const pts = [[58, 80], [64, 46], [100, 30], [138, 44], [148, 78], [134, 104], [106, 122], [100, 150], [100, 168]]
+        .map(([x, y]) => [x + jit(2.2), y + jit(2.2)]);
+      let d = `M${f1(pts[0][0])} ${f1(pts[0][1])}`;
+      for (let k = 1; k < pts.length - 1; k++) d += ` Q${f1(pts[k][0])} ${f1(pts[k][1])} ${f1((pts[k][0] + pts[k + 1][0]) / 2)} ${f1((pts[k][1] + pts[k + 1][1]) / 2)}`;
+      return d + ` L${f1(pts[pts.length - 1][0])} ${f1(pts[pts.length - 1][1])}`;
+    },
+    sketchCircle(100, 202, 7, 1.6)));
+  const card = makeCard(1e6, 200 / 250, (w, h) => { svg.setAttribute('width', w); svg.setAttribute('height', h); });
+  card.el.classList.add('photo-card', 'future-card');                 // no frame, no mat
   card.el.prepend(svg);
-  // a picture frame: a second pen border inside the first
-  card.el.classList.add('framed');
-  const inner = mk('svg', { class: 'edge inner', viewBox: '0 0 100 100', preserveAspectRatio: 'none' });
-  card.el.appendChild(inner); cardOutline(inner);
-
-  const SMILE_EYES = ['M89 153 C 92 145, 101 145, 104 153', 'M138 153 C 141 145, 150 145, 153 153'];
-  const LAUGH = 'M105 189 C 112 205, 130 205, 137 189 C 127 192, 115 192, 105 189 Z';
-  const NECK = HOME.neck.slice(0, 2), KID_NECK = ['M106 212 C 106 228, 106 238, 105 246', 'M136 212 C 136 228, 136 238, 137 246'];
-  const KID_FACE = 'M66 142 C 64 180, 86 214, 121 216 C 156 214, 178 180, 176 142';
-  const LONG_HAIR = (end) => ['M58 150 C 44 96, 70 42, 121 38 C 172 42, 198 96, 184 150 C 188 ' + (end - 40) + ', 190 ' + (end - 20) + ', 194 ' + end,
-                              'M58 150 C 54 ' + (end - 40) + ', 52 ' + (end - 20) + ', 48 ' + end,
-                              'M121 46 C 98 66, 78 98, 70 132', 'M121 46 C 144 66, 166 98, 173 130'];
-  const ME = [HOME.hair, HOME.bangs, ...HOME.strands, HOME.face, ...HOME.ears, ...HOME.glasses, ...SMILE_EYES, HOME.nose, LAUGH, ...NECK];
-  const WIFE = [...LONG_HAIR(262), 'M70 142 C 70 175, 84 206, 104 220 C 113 226, 129 226, 138 220 C 158 206, 172 175, 172 142',
-                ...SMILE_EYES, 'M121 166 C 119 172, 121 176, 124 175', LAUGH, ...NECK];
-  const GIRL = [...LONG_HAIR(232), KID_FACE, ...SMILE_EYES, 'M121 166 C 119 173, 121 177, 125 176', LAUGH, ...KID_NECK];
-  const BOY = [HOME.hair, HOME.bangs, ...HOME.strands, KID_FACE, ...HOME.ears, ...SMILE_EYES, 'M121 166 C 119 173, 121 177, 125 176', LAUGH, ...KID_NECK];
-
-  const head = (paths, x, y, sc, tilt) => {
-    const g = mk('g', { transform: `translate(${x} ${y}) rotate(${tilt}) scale(${sc}) translate(-121 -246)` });
-    // white behind the head and hair, so nothing behind shows through
-    g.appendChild(mk('path', { d: 'M52 150 C 40 36, 202 36, 190 150 C 194 200, 196 230, 194 240 L 48 240 C 46 230, 48 200, 52 150 Z', style: 'fill:#fff;stroke:none' }));
-    paths.forEach((d) => g.appendChild(mk('path', { d })));
-    svg.appendChild(g);
-  };
-
-  // just our faces, close together in the middle of the frame:
-  // back row my wife and me, in front our daughter and son
-  head(WIFE, 150, 178, 0.6, 6);
-  head(ME, 252, 182, 0.62, -6);
-  head(GIRL, 132, 288, 0.5, 8);
-  head(BOY, 236, 292, 0.5, -8);
 })();
+
 
 function setAge(a) {
   age = Math.max(0, Math.min(1, a));
@@ -1820,6 +1826,7 @@ async function theySay(text) {
 // go: where to take you afterwards (leave it out to keep chatting)
 const REPLIES = [
   { say: 'How has your life been?', answer: 'Let me show you!', go: () => goTo(1) },
+  { say: 'What do you like?', answer: 'Music! Let me play you something.', go: () => goTo(4) },
   { say: "What's your personality?", answer: 'Round, mostly… come see!', go: () => goTo(2) },
   { say: 'Show me your passion!', answer: 'Okay… stand back!', go: () => goTo(3) },
   { say: 'Bye', answer: 'Bye! See you again :)', go: () => goTo(0) },
@@ -1863,8 +1870,10 @@ addEventListener('keydown', (e) => { if (e.key === 'Escape') closeChat(); });
 document.getElementById('chatBackdrop').addEventListener('click', closeChat);
 
 // boil tick hook (called from the frame loop)
+const jigglers = [];                               // photo canvases that jiggle with the boil beat
 function onBoil(f) {
   boil = f;
+  if (page === 1) for (const cv of jigglers) cv.style.transform = `translate(${f1(jit(1.6))}px, ${f1(jit(1.6))}px) rotate(${(jit(0.9)).toFixed(2)}deg)`;
   if (page === 0) render();          // the home canvas is hidden on other pages: skip it
   boilPhotos(f);
 }

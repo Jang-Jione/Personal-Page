@@ -1,4 +1,13 @@
 {
+  "photos/timeline/": [
+    "1.png",
+    "2.png",
+    "3.png",
+    "4.png",
+    "5.png",
+    "6.png",
+    "7.png"
+  ],
   "photos/life/1_baby/": [
     "1.jpeg",
     "2.jpeg"
@@ -22,5 +31,13 @@
     "4.jpg",
     "DSC03959.JPG"
   ],
-  "music/cds/": []
+  "music/cds/": [],
+  "music/lp/": [
+    "%5BThey%20Long%20To%20Be%5D%20Close%20To%20You.mp3",
+    "biscuit.mp3"
+  ],
+  "images/lp/": [
+    "%5BThey%20Long%20To%20Be%5D%20Close%20To%20You.png",
+    "biscuit.png"
+  ]
 }

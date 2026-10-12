@@ -1,0 +1,3 @@
+LP로 쓸 노래를 넣어주세요 (mp3 / m4a / wav / ogg).
+표지는 images/lp/ 에 같은 이름으로 (예: 노래.mp3 → images/lp/노래.jpg).
+바꾼 뒤엔: python3 make_manifest.py
