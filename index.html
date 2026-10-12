@@ -80,7 +80,7 @@
   .goal .mouth path.solid { fill: #ee6a60; }               /* a slightly red mouth */
   .goal .mouth path.tongue { fill: #ffa79d; }
   .goal .mouth .ha { position: absolute; left: 92%; top: -14%; white-space: nowrap; font-size: clamp(18px, 2vw, 30px); rotate: 8deg; }
-  .goal-stage.laugh .goal-title { animation: giggle .22s ease-in-out infinite alternate; }
+  .goal.laugh .goal-title { animation: giggle .22s ease-in-out infinite alternate; }
   @keyframes mouthPop { 0% { opacity: 0; scale: 0; } 14% { opacity: 1; scale: 1.14; } 26% { scale: .96; } 70% { opacity: 1; scale: 1; } 100% { opacity: 0; scale: .9; translate: 0 -12px; } }
   @keyframes laughShake { from { rotate: -5deg; scale: .95 1.06; } to { rotate: 5deg; scale: 1.06 .92; } }
   @keyframes giggle { from { rotate: -.8deg; translate: 0 -2px; } to { rotate: .8deg; translate: 0 2px; } }
@@ -1946,7 +1946,7 @@ document.getElementById('chatBackdrop').addEventListener('click', closeChat);
 
 // ---------- goal: to be happy — hover and a few laughing mouths pop out right where the pointer is ----------
 (function goalPage() {
-  const stage = document.getElementById('goalStage');
+  const stage = document.getElementById('goal');         // the whole page reacts, not just the words
   const curve = (pts, j, closed) => () => {            // same wobbly quadratic pen stroke as the critter's face
     const q = pts.map(([x, y]) => [x + jit(j), y + jit(j)]);
     let d = `M${f1(q[0][0])} ${f1(q[0][1])}`;
