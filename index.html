@@ -64,7 +64,7 @@
   .likes-ask { font-size: clamp(19px, 1.6vw, 24px); opacity: .7; }
   .likes .records { position: relative; width: min(92vw, 1100px); height: min(64vh, 620px); }
   /* one fixed-ratio stage (760 × 440) holding the player and the CDs, scaled to fit as a whole */
-  .records .stage { position: absolute; left: 0; top: 0; width: 790px; height: 440px; transform-origin: 0 0; --sw: 2px; }
+  .records .stage { position: absolute; left: 0; top: 0; width: 840px; height: 440px; transform-origin: 0 0; --sw: 2px; }
   .player { position: absolute; left: 0; top: 0; width: 540px; height: 437px; overflow: visible; }
   /* the stage is scaled as a whole; the line width is set in drawing units to come out at 2px on screen,
      like the person (--sw = 2 / stage scale; CDs also undo their own growth and their 120→110 viewBox) */
@@ -1015,7 +1015,7 @@ function boilPath(parent, make, attrs = {}) {
 // CDs come from music/cds/: "name.mp3" + "name.jpg" (same name) = one CD.
 (async function buildRecords() {
   const box = document.getElementById('records'), dir = box.dataset.dir, svg = box.querySelector('.player');
-  const stage = box.querySelector('.stage'), STAGE_W = 790, STAGE_H = 440, PLAYER_TOP = 0, PS = 540 / 420;   // PS: player drawing → stage
+  const stage = box.querySelector('.stage'), STAGE_W = 840, STAGE_H = 440, PLAYER_TOP = 0, PS = 540 / 420;   // PS: player drawing → stage
   let k = 1;                                        // stage scale
   const fit = () => {
     const b = box.getBoundingClientRect();
