@@ -246,7 +246,9 @@
     opacity: 0; transition: opacity .7s; pointer-events: none; filter: url(#boil-sm);
   }
   .caption.on { opacity: 1; }
-  .caption a { color: inherit; text-decoration: none; pointer-events: auto; cursor: pointer; }
+  .caption a { color: inherit; text-decoration: none; pointer-events: none; cursor: pointer; }
+  .caption.on a { pointer-events: auto; }                  /* hidden captions must never catch clicks */
+  body.next .caption a, body.chat-open .caption a { pointer-events: none; }
   .caption a:hover { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; }
   body.next .caption { opacity: 0; }
   /* the music button lives on the home page only */
@@ -1055,6 +1057,7 @@ function boilPath(parent, make, attrs = {}) {
   new ResizeObserver(fit).observe(box);
   fit();
   const audio = document.getElementById('cdAudio');
+  window.lpPlayer = { audio, active: () => false };      // active() is filled in once the records exist
 
   // the player, drawn with the pen
   const PL = { cx: 172, cy: 172, r: 132 };
@@ -1087,6 +1090,7 @@ function boilPath(parent, make, attrs = {}) {
   const homeSong = document.getElementById('song');
   let homeWasPlaying = false;
   let docked = null, z = 1;
+  lpPlayer.active = () => !!docked;                     // the music button controls whichever source is current
 
   [...cds.values()].forEach((cd, i) => {
     const el = document.createElement('div');
@@ -1139,7 +1143,7 @@ function boilPath(parent, make, attrs = {}) {
     el.style.zIndex = z++;
 
     const dock = () => {
-      if (docked && docked !== api) docked.undock(true);
+      if (docked && docked !== api) docked.undock(true, true);   // switching records: the home music stays off
       const p = platterCenter();
       st.s = (p.r * 2) / SIZE; st.x = p.x - SIZE / 2; st.y = p.y - SIZE / 2; st.r = 0;
       el.classList.add('snapping', 'docked'); place();
@@ -1151,11 +1155,11 @@ function boilPath(parent, make, attrs = {}) {
         audio.src = cd.song; audio.currentTime = 0; audio.play().catch(() => {});
       }
     };
-    const undock = (goHome) => {
+    const undock = (goHome, switching) => {
       el.classList.remove('playing', 'docked'); box.classList.remove('spinning');
       audio.pause();
       docked = null;
-      if (homeWasPlaying && homeSong) { homeWasPlaying = false; homeSong.play().catch(() => {}); }   // back to the usual music
+      if (!switching && homeWasPlaying && homeSong) { homeWasPlaying = false; homeSong.play().catch(() => {}); }   // back to the usual music
       st.s = 1;
       if (goHome) { Object.assign(st, home(), { r: jit(16) }); el.classList.add('snapping'); setTimeout(() => el.classList.remove('snapping'), 460); }
       place();
@@ -1921,10 +1925,14 @@ const btn = document.getElementById('music');
 // ---------- music button ----------
 const song = document.getElementById('song');
 song.volume = 0.7;
-const sync = () => btn.classList.toggle('playing', !song.paused);
-song.addEventListener('play', sync);
-song.addEventListener('pause', sync);
-btn.addEventListener('click', () => (song.paused ? song.play().catch(() => {}) : song.pause()));
+const lp = () => { const p = window.lpPlayer; return p && (p.active() || !p.audio.paused) ? p.audio : null; };
+btn.addEventListener('click', () => {
+  const a = lp() || song;                           // a record on the turntable owns the button
+  a.paused ? a.play().catch(() => {}) : a.pause();
+});
+song.addEventListener('play', () => { const a = lp(); if (a && !a.paused) song.pause(); });   // never two songs at once
+const sync = () => btn.classList.toggle('playing', !(lp() || song).paused);
+for (const a of [song, window.lpPlayer && lpPlayer.audio]) if (a) { a.addEventListener('play', sync); a.addEventListener('pause', sync); }
 </script>
 </body>
 </html>
