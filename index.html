@@ -188,7 +188,8 @@
   /* a QR code to this page, top left of the home page: click to enlarge */
   .qr-btn { position: fixed; top: 24px; left: 26px; z-index: 8; width: 58px; height: 58px; border: 0; background: none; padding: 0; cursor: zoom-in;
             transition: opacity .25s, transform .25s; }
-  .qr-btn img { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+  .qr-btn svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+  .qr-btn path { fill: none; stroke: #111; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
   .qr-btn:hover { transform: scale(1.08) rotate(3deg); }
   body.next .qr-btn, body.chat-open .qr-btn { opacity: 0; pointer-events: none; }
   .phone-btn .dot { position: absolute; top: -4px; right: -6px; width: 9px; height: 9px; border-radius: 50%; background: #111; transition: opacity .3s; }
@@ -408,7 +409,7 @@
 <p class="caption" id="caption" aria-live="polite"></p>
 
 <!-- phone (top right): opens the chat -->
-<button class="qr-btn" id="qrBtn" aria-label="show the QR code of this page"><img src="QR/adobe-express-qr-code.png" alt="QR code to this page" /></button>
+<button class="qr-btn" id="qrBtn" aria-label="show the QR code of this page"><svg viewBox="0 0 60 60" id="qrIcon"></svg></button>
 <button class="phone-btn" id="phoneBtn" aria-label="open chat"><svg viewBox="0 0 40 64" id="phoneIcon"></svg><span class="dot"></span></button>
 <!-- personality: a round, soft something on the left that bristles when you poke it; words on the right -->
 <section class="traits" id="traits" aria-label="my personality">
@@ -1870,6 +1871,18 @@ window.resetLife = () => { cancelAnimationFrame(glide); dragging = false; setAge
 const phoneIcon = document.getElementById('phoneIcon');
 boilPath(phoneIcon, joinMakers(sketchLine(4, 6, 36, 4, 1.2, 2), sketchLine(36, 4, 37, 60, 1.2, 2), sketchLine(37, 60, 3, 61, 1.2, 2), sketchLine(3, 61, 4, 6, 1.2, 2)));
 boilPath(phoneIcon, joinMakers(sketchLine(15, 11, 25, 11, 0.5, 0.5), sketchCircle(20, 53, 3, 0.6)));
+// the QR button is a pen drawing of a QR code; the real one opens when you click it
+const qrIcon = document.getElementById('qrIcon');
+{
+  const box = (x1, y1, x2, y2, a = 1) => joinMakers(sketchLine(x1, y1, x2, y1 - 0.6, a, 1.5), sketchLine(x2, y1 - 0.6, x2 + 0.5, y2, a, 1.5), sketchLine(x2 + 0.5, y2, x1, y2 + 0.6, a, 1.5), sketchLine(x1, y2 + 0.6, x1, y1, a, 1.5));
+  const finder = (x, y) => joinMakers(box(x, y, x + 19, y + 19, 1), box(x + 6, y + 6, x + 13, y + 13, 0.6), sketchLine(x + 7, y + 11, x + 12, y + 8, 0.4, 0.5));
+  boilPath(qrIcon, joinMakers(finder(3, 3), finder(38, 3), finder(3, 38)));
+  boilPath(qrIcon, joinMakers(
+    sketchLine(28, 6, 33, 6, 0.4, 0.5), sketchLine(28, 14, 32, 14, 0.4, 0.5), sketchLine(26, 24, 34, 24, 0.5, 0.8), sketchLine(8, 28, 15, 28, 0.5, 0.8),
+    sketchLine(22, 29, 22, 35, 0.4, 0.5), sketchLine(40, 28, 52, 28, 0.6, 1), sketchLine(30, 34, 38, 34, 0.5, 0.8), sketchLine(46, 36, 54, 36, 0.5, 0.8),
+    sketchLine(30, 44, 30, 54, 0.5, 0.8), sketchLine(38, 42, 46, 42, 0.5, 0.8), sketchLine(40, 50, 52, 50, 0.6, 1), sketchLine(46, 44, 46, 56, 0.5, 0.8),
+    sketchCircle(36, 28, 1.6, 0.4), sketchCircle(24, 48, 1.6, 0.4), sketchCircle(54, 44, 1.6, 0.4)));
+}
 const chatOutline = document.getElementById('chatOutline');
 boilPath(chatOutline, joinMakers(sketchLine(8, 10, 332, 6, 3, 5), sketchLine(332, 6, 334, 612, 3, 5), sketchLine(334, 612, 6, 614, 3, 5), sketchLine(6, 614, 8, 10, 3, 5)));
 boilPath(chatOutline, joinMakers(sketchLine(130, 26, 210, 26, 1, 1), sketchCircle(170, 586, 13, 1.2), sketchLine(24, 80, 316, 78, 1.5, 2)));
