@@ -5,7 +5,7 @@
 ## 실행 방법
 
 ```bash
-cd intro-weather
+cd interactive_web
 python3 -m http.server 5174
 ```
 

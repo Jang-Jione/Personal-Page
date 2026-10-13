@@ -185,6 +185,12 @@
   .phone-btn svg, .chat svg.outline { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
   .phone-btn path, .chat path { fill: none; stroke: #111; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
   .phone-btn:hover { transform: rotate(-6deg); }
+  /* a QR code to this page, top left of the home page: click to enlarge */
+  .qr-btn { position: fixed; top: 24px; left: 26px; z-index: 8; width: 58px; height: 58px; border: 0; background: none; padding: 0; cursor: zoom-in;
+            transition: opacity .25s, transform .25s; }
+  .qr-btn img { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+  .qr-btn:hover { transform: scale(1.08) rotate(3deg); }
+  body.next .qr-btn, body.chat-open .qr-btn { opacity: 0; pointer-events: none; }
   .phone-btn .dot { position: absolute; top: -4px; right: -6px; width: 9px; height: 9px; border-radius: 50%; background: #111; transition: opacity .3s; }
   body.chatted .phone-btn .dot { opacity: 0; }
 
@@ -402,6 +408,7 @@
 <p class="caption" id="caption" aria-live="polite"></p>
 
 <!-- phone (top right): opens the chat -->
+<button class="qr-btn" id="qrBtn" aria-label="show the QR code of this page"><img src="QR/adobe-express-qr-code.png" alt="QR code to this page" /></button>
 <button class="phone-btn" id="phoneBtn" aria-label="open chat"><svg viewBox="0 0 40 64" id="phoneIcon"></svg><span class="dot"></span></button>
 <!-- personality: a round, soft something on the left that bristles when you poke it; words on the right -->
 <section class="traits" id="traits" aria-label="my personality">
@@ -1512,7 +1519,7 @@ function fitPhoto() {                              // always fill the same box, 
 }
 lbImg.addEventListener('load', fitPhoto);
 addEventListener('resize', fitPhoto);
-function openPhoto(src) { lbImg.src = src; if (lbImg.complete) fitPhoto(); document.body.classList.add('lb-open'); }
+function openPhoto(src) { lbImg.style.imageRendering = /^QR\//.test(src) ? 'pixelated' : ''; lbImg.src = src; if (lbImg.complete) fitPhoto(); document.body.classList.add('lb-open'); }
 function closePhoto() { document.body.classList.remove('lb-open'); }
 lightbox.addEventListener('click', closePhoto);
 addEventListener('keydown', (e) => { if (e.key === 'Escape') closePhoto(); });
@@ -2013,6 +2020,8 @@ function onBoil(f) {
 
 
 const btn = document.getElementById('music');
+
+document.getElementById('qrBtn').addEventListener('click', () => openPhoto('QR/adobe-express-qr-code.png'));   // enlarge it so a phone can scan it
 
 // ---------- music button ----------
 const song = document.getElementById('song');
